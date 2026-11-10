@@ -183,12 +183,12 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
         if (typeof event.data.path === "string" && event.data.path.startsWith("/design/")) {
           const id = decodeURIComponent(event.data.path.slice("/design/".length));
           setDraft((current) => ({ ...current, open_design: current.open_design ?? { id, name: "Undangan Kalakai", canvas_json: "{}", width: 1080, height: 1920 } }));
-          setActiveTab(4);
+          setActiveTab(3);
         }
       }
       if (event.data.type === "kalakai:opendesign:created" && String(event.data.eventId) === String(eventId) && event.data.design) {
         setDraft((current) => ({ ...current, open_design: event.data.design as OpenDesignData, ...applyTemplateToWebDesign(event.data.design as OpenDesignData, current) }));
-        setActiveTab(4);
+        setActiveTab(3);
       }
       if (event.data.type === "kalakai:opendesign:update" && String(event.data.eventId) === String(eventId) && event.data.design) {
         setDraft((current) => ({ ...current, open_design: event.data.design as OpenDesignData, ...applyTemplateToWebDesign(event.data.design as OpenDesignData, current) }));
@@ -278,6 +278,16 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
     }
   }
 
+  async function uploadAssetFile(file: File): Promise<string> {
+    if (!eventId) throw new Error("Simpan draf acara terlebih dahulu sebelum mengunggah foto.");
+    const form = new FormData();
+    form.append("image", file);
+    const res = await fetch(`/api/user/events/${eventId}/assets`, { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message ?? "Gagal mengunggah foto.");
+    return data.url as string;
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void saveInvitation(isPublished);
@@ -298,58 +308,163 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
   return <DashboardShell user={user} nav={builderNav}>
     <div className="invite-builder-heading"><div><p className="eyebrow"><span className="eyebrow-dot" />PEMBUAT UNDANGAN</p><h1>{eventId ? "Kustomisasi undangan" : "Mulai undangan baru"}</h1><p>Pilih dasar desain, isi detail acara, lalu sesuaikan tampilannya.</p></div><span className="invite-builder-plan">PAKET {packageCode === "free" ? "KERABAT FREE" : packageCode === "bahagia" ? "BAHAGIA" : "RESEPSI"}</span></div>
     <nav className="invite-builder-tabs" role="tablist" aria-label="Langkah pembuatan undangan">
-      {[[1, "Template", "Pilih desain"], [2, "Detail acara", "Isi informasi"], [3, "Tampilan", "Warna & bagian"], [4, "Editor", "Atur elemen"], [5, "Audio", "Spotify"]].map(([step, label, hint]) => <button type="button" role="tab" aria-selected={activeTab === step} className={activeTab === step ? "active" : ""} key={step} onClick={() => setActiveTab(Number(step))}><span>{String(step).padStart(2, "0")}</span><strong>{label}</strong><small>{hint}</small></button>)}
+      {[
+        [1, "Informasi acara", "Identitas & tautan"],
+        [2, "Detail acara", "Lokasi, cerita & musik"],
+        [3, "Editor desain", "Tata letak & tampilan"],
+      ].map(([step, label, hint]) => (
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === step}
+          className={activeTab === step ? "active" : ""}
+          key={step}
+          onClick={() => setActiveTab(Number(step))}
+        >
+          <span>{String(step).padStart(2, "0")}</span>
+          <strong>{label}</strong>
+          <small>{hint}</small>
+        </button>
+      ))}
     </nav>
-    <div className={`invite-builder-layout${activeTab === 4 ? " is-editor-tab" : ""}`}>
+    <div className={`invite-builder-layout${activeTab === 3 ? " is-editor-tab" : ""}`}>
       <form className="invite-builder-form" data-active-tab={activeTab} onSubmit={handleSubmit}>
-        <section className="invite-builder-section invite-canvas-section" data-builder-section="1"><div className="invite-builder-section-title"><span>01</span><div><h2>Template &amp; desain undangan</h2><p>Pilih template, mulai dari kanvas kosong, atau lanjutkan desain dari studio OpenDesign.</p></div></div>
-          {eventId ? <iframe className="kalakai-opendesign-frame" title="Katalog template OpenDesign" src={`/opendesign/?eventId=${encodeURIComponent(eventId)}&plan=${packageCode}`} /> : <div className="opendesign-first-save"><p>Simpan draf acara lebih dahulu. Setelah tersimpan, katalog template dan studio desain akan terbuka.</p><button type="button" className="builder-save-button" disabled={saving} onClick={() => void saveInvitation(false)}><Save size={16} />{saving ? "Menyimpan…" : "Simpan draf & buka katalog"}</button></div>}
-        </section>
-
-        <section className="invite-builder-section" data-builder-section="2"><div className="invite-builder-section-title"><span>02</span><div><h2>Cerita acaramu</h2><p>Informasi ini akan tampil pada halaman undangan.</p></div></div>
+        <section className="invite-builder-section" data-builder-section="1">
+          <div className="invite-builder-section-title">
+            <span>01</span>
+            <div>
+              <h2>Informasi acara</h2>
+              <p>Tentukan nama acara, jenis acara, tanggal pelaksanaan, dan tautan unik undangan.</p>
+            </div>
+          </div>
           <div className="invite-builder-fields">
-            <label className="builder-field-full">Nama acara<input value={draft.title} onChange={(event) => update("title", event.target.value)} required maxLength={255} placeholder="Pernikahan Alya & Bima" /></label>
-            <label>Jenis acara<select value={draft.event_type} onChange={(event) => update("event_type", event.target.value)}><option value="wedding">Pernikahan</option><option value="engagement">Pertunangan</option><option value="birthday">Ulang tahun</option><option value="other">Acara lainnya</option></select></label>
-            <label>Tanggal &amp; waktu<input type="datetime-local" value={draft.event_date} onChange={(event) => update("event_date", event.target.value)} /></label>
-            <label>{draft.event_type === "birthday" ? "Nama yang berulang tahun" : "Nama orang pertama"}<input value={draft.groom_name} onChange={(event) => update("groom_name", event.target.value)} placeholder="Nama lengkap" /></label>
-            <label>{draft.event_type === "birthday" ? "Nama orang tua / keluarga" : "Nama orang kedua"}<input value={draft.bride_name} onChange={(event) => update("bride_name", event.target.value)} placeholder="Opsional" /></label>
-            <label className="builder-field-full">Slug URL acara<div className="builder-slug-input"><span>{siteHost}/</span><input value={draft.slug} onChange={(event) => { setSlugTouched(true); update("slug", slugify(event.target.value)); }} required maxLength={80} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="nama-acara" /><span>/[nama-tamu]</span></div><small>Tautan personal untuk setiap tamu akan memakai slug nama tamu.</small></label>
-            <label>Nama tempat<input value={draft.location_name} onChange={(event) => update("location_name", event.target.value)} placeholder="Nama gedung atau lokasi" /></label>
-            <label>Tautan Google Maps<input type="url" value={draft.map_url} onChange={(event) => update("map_url", event.target.value)} placeholder="https://maps.google.com/..." /></label>
-            <label className="builder-field-full">Alamat lengkap<textarea value={draft.location_address} onChange={(event) => update("location_address", event.target.value)} rows={2} placeholder="Alamat acara" /></label>
-            <label className="builder-field-full">Kalimat pembuka<textarea value={draft.quote} onChange={(event) => update("quote", event.target.value)} rows={3} maxLength={1000} placeholder="Tuliskan doa atau kalimat pembuka" /></label>
-            <label>Sumber kutipan<input value={draft.quote_source} onChange={(event) => update("quote_source", event.target.value)} placeholder="QS. Ar-Rum: 21" /></label>
-            <label>Foto sampul (URL)<input type="url" value={draft.hero_image_url} onChange={(event) => update("hero_image_url", event.target.value)} placeholder="https://..." /></label>
-            <label className="builder-field-full">Cerita perjalanan<textarea value={draft.love_story_text} onChange={(event) => update("love_story_text", event.target.value)} rows={4} placeholder={"2021 | Pertemuan pertama | Cerita singkat kalian\n2024 | Hari bahagia | Momen yang ingin dikenang"} /><small>Satu cerita per baris dengan format: Tahun | Judul | Cerita.</small></label>
+            <label className="builder-field-full">
+              Nama acara
+              <input value={draft.title} onChange={(event) => update("title", event.target.value)} required maxLength={255} placeholder="Pernikahan Alya & Bima" />
+            </label>
+            <label className="builder-field-full">
+              Slug URL acara
+              <div className="builder-slug-input">
+                <span>{siteHost}/</span>
+                <input value={draft.slug} onChange={(event) => { setSlugTouched(true); update("slug", slugify(event.target.value)); }} required maxLength={80} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="nama-acara" />
+                <span>/[nama-tamu]</span>
+              </div>
+              <small>Tautan personal untuk setiap tamu akan memakai slug nama tamu secara otomatis.</small>
+            </label>
+            <label>
+              Jenis acara
+              <select value={draft.event_type} onChange={(event) => update("event_type", event.target.value)}>
+                <option value="wedding">Pernikahan</option>
+                <option value="engagement">Pertunangan</option>
+                <option value="birthday">Ulang tahun</option>
+                <option value="other">Acara lainnya</option>
+              </select>
+            </label>
+            <label>
+              Tanggal &amp; waktu
+              <input type="datetime-local" value={draft.event_date} onChange={(event) => update("event_date", event.target.value)} />
+            </label>
+            <label>
+              {draft.event_type === "birthday" ? "Nama yang berulang tahun" : "Nama orang pertama (Mempelai Pria)"}
+              <input value={draft.groom_name} onChange={(event) => update("groom_name", event.target.value)} placeholder="Nama lengkap" />
+            </label>
+            <label>
+              {draft.event_type === "birthday" ? "Nama orang tua / keluarga" : "Nama orang kedua (Mempelai Wanita)"}
+              <input value={draft.bride_name} onChange={(event) => update("bride_name", event.target.value)} placeholder="Opsional" />
+            </label>
           </div>
         </section>
 
-        <section className="invite-builder-section" data-builder-section="3"><div className="invite-builder-section-title"><span>03</span><div><h2>Atur tampilan</h2><p>Sesuaikan palet warna dan tipografi undangan.</p></div></div>
-          <div className="invite-design-fields"><label>Warna utama<span className="builder-color-input"><input type="color" value={draft.primary_color} onChange={(event) => update("primary_color", event.target.value)} /><input value={draft.primary_color} onChange={(event) => update("primary_color", event.target.value)} pattern="#[0-9A-Fa-f]{6}" /></span></label><label>Warna aksen<span className="builder-color-input"><input type="color" value={draft.accent_color} onChange={(event) => update("accent_color", event.target.value)} /><input value={draft.accent_color} onChange={(event) => update("accent_color", event.target.value)} pattern="#[0-9A-Fa-f]{6}" /></span></label><label>Gaya huruf<select value={draft.font_family} onChange={(event) => update("font_family", event.target.value as Draft["font_family"])}><option value="serif">Serif — klasik</option><option value="sans">Sans serif — modern</option></select></label><label>Transisi halaman<select value={packageCode === "free" ? "fade" : draft.page_transition} onChange={(event) => update("page_transition", event.target.value as Draft["page_transition"])} disabled={packageCode === "free"}><option value="fade">Fade lembut</option>{packageCode !== "free" && <><option value="slide">Geser</option><option value="flip">Flip</option><option value="zoom">Zoom</option></>}</select><small>{packageCode === "free" ? "Transisi dasar. Pilihan premium tersedia pada Paket Bahagia dan Resepsi." : "Efek perpindahan saat tamu menggulir halaman undangan."}</small></label></div>
-          <div className="builder-section-toggles"><strong>Bagian yang ditampilkan</strong><div>{([ ["names", "Nama dan keluarga"], ["story", "Cerita perjalanan"], ["details", "Tanggal dan lokasi"], ["gifts", "Amplop digital"], ["guestbook", "RSVP dan ucapan"], ["spotify", "Spotify"] ] as const).map(([key, label]) => <label key={key}><input type="checkbox" checked={draft.sections[key]} onChange={(event) => setDraft((current) => ({ ...current, sections: { ...current.sections, [key]: event.target.checked } }))} />{label}</label>)}</div></div>
+        <section className="invite-builder-section" data-builder-section="2">
+          <div className="invite-builder-section-title">
+            <span>02</span>
+            <div>
+              <h2>Detail acara &amp; cerita</h2>
+              <p>Isi detail lokasi tempat acara, doa atau kutipan pembuka, cerita perjalanan, dan musik pengiring.</p>
+            </div>
+          </div>
+          <div className="invite-builder-fields">
+            <label>
+              Nama tempat / gedung
+              <input value={draft.location_name} onChange={(event) => update("location_name", event.target.value)} placeholder="Nama gedung atau lokasi" />
+            </label>
+            <label>
+              Tautan Google Maps
+              <input type="url" value={draft.map_url} onChange={(event) => update("map_url", event.target.value)} placeholder="https://maps.google.com/..." />
+            </label>
+            <label className="builder-field-full">
+              Alamat lengkap
+              <textarea value={draft.location_address} onChange={(event) => update("location_address", event.target.value)} rows={2} placeholder="Alamat lengkap acara" />
+            </label>
+            <label className="builder-field-full">
+              Kalimat pembuka / Doa
+              <textarea value={draft.quote} onChange={(event) => update("quote", event.target.value)} rows={3} maxLength={1000} placeholder="Tuliskan doa atau kalimat pembuka" />
+            </label>
+            <label>
+              Sumber kutipan / Surat
+              <input value={draft.quote_source} onChange={(event) => update("quote_source", event.target.value)} placeholder="QS. Ar-Rum: 21" />
+            </label>
+            <label>
+              Foto sampul utama (URL)
+              <input type="url" value={draft.hero_image_url} onChange={(event) => update("hero_image_url", event.target.value)} placeholder="https://..." />
+            </label>
+            <label className="builder-field-full">
+              Cerita perjalanan (Love Story)
+              <textarea value={draft.love_story_text} onChange={(event) => update("love_story_text", event.target.value)} rows={4} placeholder={"2021 | Pertemuan pertama | Cerita singkat kalian\n2024 | Hari bahagia | Momen yang ingin dikenang"} />
+              <small>Satu cerita per baris dengan format: Tahun | Judul | Cerita.</small>
+            </label>
+            <label className="builder-field-full">
+              Tautan atau ID track Spotify
+              <input value={draft.spotify_input} onChange={(event) => update("spotify_input", event.target.value)} placeholder="https://open.spotify.com/track/..." />
+              {draft.spotify_input && !spotifyId && <small className="builder-field-error">Masukkan URL track atau ID Spotify yang valid.</small>}
+            </label>
+            <label>
+              Judul lagu Spotify
+              <input value={draft.audio_title} onChange={(event) => update("audio_title", event.target.value)} placeholder="Nama lagu — artis" />
+            </label>
+            <label>
+              Audio MP3 alternatif (URL)
+              <input type="url" value={draft.audio_preview_url} onChange={(event) => update("audio_preview_url", event.target.value)} placeholder="https://.../audio.mp3" />
+            </label>
+          </div>
+          {spotifyId && (
+            <div className="spotify-preview" style={{ marginTop: 14 }}>
+              <Music2 size={17} />
+              <span>Track Spotify siap disematkan</span>
+              <a href={`https://open.spotify.com/track/${spotifyId}`} target="_blank" rel="noreferrer">
+                Lihat track <ArrowUpRight size={14} />
+              </a>
+            </div>
+          )}
         </section>
 
-        <section className="invite-builder-section invite-canvas-section" data-builder-section="4"><div className="invite-builder-section-title"><span>04</span><div><h2>Editor halaman HTML</h2><p>Susun halaman undangan responsif dengan section yang bisa ditambah, diedit, dan dipindah dengan drag-and-drop.</p></div></div>
-          <details className="opendesign-event-data"><summary>Atur data acara dan konten undangan</summary><p>Nilai ini dihubungkan ke layer bernama seperti <code>couple_names</code>, <code>event_date</code>, <code>location_name</code>, dan <code>quote</code>. Pilih teks pada kanvas untuk mengatur desainnya.</p><div className="invite-builder-fields">
-            <label className="builder-field-full">Nama acara<input value={draft.title} onChange={(event) => update("title", event.target.value)} required maxLength={255} /></label>
-            <label>Jenis acara<select value={draft.event_type} onChange={(event) => update("event_type", event.target.value)}><option value="wedding">Pernikahan</option><option value="engagement">Pertunangan</option><option value="birthday">Ulang tahun</option><option value="other">Acara lainnya</option></select></label>
-            <label>Tanggal &amp; waktu<input type="datetime-local" value={draft.event_date} onChange={(event) => update("event_date", event.target.value)} /></label>
-            <label>{draft.event_type === "birthday" ? "Nama yang berulang tahun" : "Nama orang pertama"}<input value={draft.groom_name} onChange={(event) => update("groom_name", event.target.value)} /></label>
-            <label>{draft.event_type === "birthday" ? "Nama orang tua / keluarga" : "Nama orang kedua"}<input value={draft.bride_name} onChange={(event) => update("bride_name", event.target.value)} /></label>
-            <label>Nama tempat<input value={draft.location_name} onChange={(event) => update("location_name", event.target.value)} placeholder="Nama gedung atau lokasi" /></label>
-            <label>Tautan Google Maps<input type="url" value={draft.map_url} onChange={(event) => update("map_url", event.target.value)} placeholder="https://maps.google.com/..." /></label>
-            <label className="builder-field-full">Alamat lengkap<textarea value={draft.location_address} onChange={(event) => update("location_address", event.target.value)} rows={2} /></label>
-            <label className="builder-field-full">Kalimat pembuka<textarea value={draft.quote} onChange={(event) => update("quote", event.target.value)} rows={3} maxLength={1000} /></label>
-            <label>Sumber kutipan<input value={draft.quote_source} onChange={(event) => update("quote_source", event.target.value)} /></label>
-            <label>Foto sampul (URL)<input type="url" value={draft.hero_image_url} onChange={(event) => update("hero_image_url", event.target.value)} placeholder="https://..." /></label>
-            <label className="builder-field-full">Cerita perjalanan<textarea value={draft.love_story_text} onChange={(event) => update("love_story_text", event.target.value)} rows={4} placeholder="Tahun | Judul | Cerita" /></label>
-          </div></details>
-          <InvitationHTMLBuilder value={draft.web_design} onChange={(web_design) => update("web_design", web_design)} title={draft.title} groom={draft.groom_name} bride={draft.bride_name} date={draft.event_date} location={draft.location_name} quote={draft.quote} photo={draft.hero_image_url} primary={draft.primary_color} accent={draft.accent_color} maxSections={packageCode === "free" ? 10 : 20} />
-        </section>
-
-        <section className="invite-builder-section" data-builder-section="5"><div className="invite-builder-section-title"><span>05</span><div><h2>Musik Spotify</h2><p>Tempel tautan lagu Spotify untuk pemutar musik di undangan.</p></div></div>
-          <div className="invite-builder-fields"><label className="builder-field-full">Tautan atau ID track Spotify<input value={draft.spotify_input} onChange={(event) => update("spotify_input", event.target.value)} placeholder="https://open.spotify.com/track/..." />{draft.spotify_input && !spotifyId && <small className="builder-field-error">Masukkan URL track atau ID Spotify yang valid.</small>}</label><label>Judul lagu<input value={draft.audio_title} onChange={(event) => update("audio_title", event.target.value)} placeholder="Nama lagu — artis" /></label><label>Audio MP3 alternatif (URL)<input type="url" value={draft.audio_preview_url} onChange={(event) => update("audio_preview_url", event.target.value)} placeholder="https://.../audio.mp3" /></label></div>
-          {spotifyId && <div className="spotify-preview"><Music2 size={17} /><span>Track Spotify siap disematkan</span><a href={`https://open.spotify.com/track/${spotifyId}`} target="_blank" rel="noreferrer">Lihat track <ArrowUpRight size={14} /></a></div>}
+        <section className="invite-builder-section invite-canvas-section" data-builder-section="3">
+          <div className="invite-builder-section-title">
+            <span>03</span>
+            <div>
+              <h2>Editor desain &amp; tampilan HTML</h2>
+              <p>Atur warna, font, animasi, serta susun section dan elemen undangan. Anda dapat langsung mengedit teks atau menyeret elemen pada kanvas undangan.</p>
+            </div>
+          </div>
+          <InvitationHTMLBuilder
+            value={draft.web_design}
+            onChange={(web_design) => update("web_design", web_design)}
+            title={draft.title}
+            groom={draft.groom_name}
+            bride={draft.bride_name}
+            date={draft.event_date}
+            location={draft.location_name}
+            quote={draft.quote}
+            photo={draft.hero_image_url}
+            primary={draft.primary_color}
+            accent={draft.accent_color}
+            plan={packageCode}
+            eventId={eventId}
+            onUploadImage={eventId ? uploadAssetFile : undefined}
+            onUpdateEventData={(field, val) => update(field as keyof Draft, val as any)}
+            onUpdatePrimaryColor={(c) => update("primary_color", c)}
+            onUpdateAccentColor={(c) => update("accent_color", c)}
+          />
         </section>
 
         {error && <p className="invite-builder-error" role="alert">{error}</p>}

@@ -331,7 +331,172 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
 
       {/* 2. Main Invitation Content */}
       <div className={`transition-opacity duration-1000 ${isOpen ? "opacity-100" : "opacity-0"}`}>
-        {webDesign && isOpen && <InvitationWebRenderer design={{ ...webDesign, sections: webDesign.sections.filter((section) => section.type !== "gifts" && section.type !== "rsvp") }} event={event} guestName={guest?.name} timeLeft={timeLeft} onRsvp={() => document.getElementById("rsvp")?.scrollIntoView({ behavior: "smooth" })} />}
+        {webDesign && isOpen && (
+          <InvitationWebRenderer
+            design={webDesign}
+            event={event}
+            guestName={guest?.name}
+            primary={theme.primary_color}
+            accent={theme.accent_color}
+            onMusic={(action) => {
+              if (!audioRef.current) return;
+              if (action === "play") audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+              else if (action === "pause") { audioRef.current.pause(); setIsPlaying(false); }
+              else toggleMusic();
+            }}
+            slots={{
+              ticket: guest ? (
+                <div className="border border-rose-700/50 bg-gradient-to-b from-rose-950/40 to-stone-900/80 p-8 rounded-3xl shadow-xl space-y-4 max-w-md mx-auto text-center">
+                  <div className="flex items-center justify-center gap-2 text-rose-400 text-xs font-mono uppercase tracking-wider">
+                    <QrCode className="h-4 w-4" /> Tiket Masuk &amp; Check-In Tamu
+                  </div>
+                  <h3 className="text-2xl font-serif font-bold text-white">{guest.name}</h3>
+                  <p className="text-xs text-stone-400">
+                    Tunjukkan QR Code ini kepada penerima tamu di meja resepsi untuk pencatatan kehadiran cepat:
+                  </p>
+                  <div className="p-4 bg-white rounded-2xl inline-block shadow-inner mx-auto">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(guest.qr_code)}`}
+                      alt={`QR Code ${guest.name}`}
+                      className="w-40 h-40 object-contain mx-auto"
+                    />
+                  </div>
+                  <div className="flex justify-center items-center gap-4 text-xs font-mono">
+                    <span className="bg-stone-950 px-3 py-1 rounded-full border border-stone-800 text-stone-300">
+                      Kode: {guest.qr_code}
+                    </span>
+                    <span className="bg-rose-500/20 px-3 py-1 rounded-full border border-rose-500/30 text-rose-300">
+                      Kuota: {guest.pax} Orang
+                    </span>
+                  </div>
+                </div>
+              ) : null,
+              gifts: ((event.gift_accounts?.length ?? 0) > 0) ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto text-left">
+                  {event.gift_accounts?.map((acc) => (
+                    <div key={acc.id} className="bg-stone-900 border border-stone-800 p-6 rounded-2xl text-left flex flex-col justify-between space-y-4">
+                      <div>
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                          {acc.bank_name}
+                        </span>
+                        <div className="mt-3 text-xl font-mono font-bold text-white tracking-wider">
+                          {acc.account_number}
+                        </div>
+                        <div className="text-xs text-stone-400 mt-1">a.n. {acc.account_holder}</div>
+                      </div>
+                      <button
+                        onClick={() => handleCopyAccount(acc.bank_name, acc.account_number)}
+                        className="w-full py-2 px-3 rounded-lg bg-stone-800 hover:bg-stone-700 text-xs font-medium text-stone-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        {copiedBank === acc.bank_name ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-emerald-400" /> Tersalin!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" /> Salin Nomor Rekening
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null,
+              rsvp: (
+                <div className="max-w-2xl mx-auto space-y-6 text-left">
+                  <form onSubmit={handleSubmitRsvp} className="bg-stone-900 p-6 rounded-3xl border border-stone-800 space-y-4">
+                    {rsvpSuccess && (
+                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+                        <Check className="h-4 w-4" /> Terima kasih! Doa dan konfirmasi kehadiran Anda berhasil terkirim.
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs font-medium text-stone-300 mb-1">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        value={rsvpName}
+                        onChange={(e) => setRsvpName(e.target.value)}
+                        required
+                        placeholder="Masukkan nama Anda..."
+                        className="w-full px-4 py-2.5 rounded-xl bg-stone-950 border border-stone-800 text-sm text-white focus:outline-none focus:border-rose-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-stone-300 mb-1">Konfirmasi Kehadiran</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: "hadir", label: "Akan Hadir" },
+                          { id: "tidak_hadir", label: "Tidak Hadir" },
+                          { id: "ragu", label: "Masih Ragu" },
+                        ].map((opt) => (
+                          <button
+                            type="button"
+                            key={opt.id}
+                            onClick={() => setRsvpStatus(opt.id)}
+                            className={`py-2 text-xs font-medium rounded-xl border transition ${
+                              rsvpStatus === opt.id
+                                ? "bg-rose-600 text-white border-rose-500"
+                                : "bg-stone-950 text-stone-400 border-stone-800 hover:border-stone-700"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-stone-300 mb-1">Ucapan &amp; Doa Restu</label>
+                      <textarea
+                        rows={3}
+                        value={rsvpMessage}
+                        onChange={(e) => setRsvpMessage(e.target.value)}
+                        required
+                        placeholder="Tuliskan ucapan dan doa terbaik Anda..."
+                        className="w-full px-4 py-2.5 rounded-xl bg-stone-950 border border-stone-800 text-sm text-white focus:outline-none focus:border-rose-500"
+                      ></textarea>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={submittingRsvp}
+                      className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      {submittingRsvp ? "Mengirim..." : "Kirim Ucapan"}
+                    </button>
+                  </form>
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-stone-300">
+                      Ucapan Doa ({event.wishes?.length || 0})
+                    </h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                      {event.wishes && event.wishes.length > 0 ? (
+                        event.wishes.map((w) => (
+                          <div key={w.id} className="bg-stone-900/60 p-4 rounded-2xl border border-stone-800/80 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-sm text-white">{w.guest_name}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                w.attendance === "hadir" 
+                                  ? "bg-emerald-500/20 text-emerald-400" 
+                                  : w.attendance === "tidak_hadir" 
+                                  ? "bg-rose-500/20 text-rose-400" 
+                                  : "bg-amber-500/20 text-amber-400"
+                              }`}>
+                                {w.attendance === "hadir" ? "Hadir" : w.attendance === "tidak_hadir" ? "Tidak Hadir" : "Ragu"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-stone-300 leading-relaxed">{w.message}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-stone-500 text-center py-6">Belum ada ucapan. Jadilah yang pertama mengirimkan doa!</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ),
+            }}
+          />
+        )}
         {!webDesign && designedPages.length > 0 && isOpen && <OpenDesignInvitationPages pages={designedPages} width={designedWidth} height={designedHeight} names={displayNames.join(" & ")} guestName={guest?.name ?? ""} eventDate={event.event_date ?? ""} location={event.location_name || event.location_address || ""} fields={invitationFields} packageCode={event.package_code ?? "free"} pageTransition={theme.page_transition ?? "fade"} isActive={isOpen} />}
         {!webDesign && designedPages.length === 0 && <>
         {/* Hero Section */}
@@ -410,7 +575,8 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
         </section>}
         </>}
 
-        {/* 3. Guest Reception QR Code Pass */}
+        {/* 3. Legacy / Fallback Guest Reception QR Code Pass, Gifts & RSVP */}
+        {!webDesign && <>
         {showSection("guestbook") && guest && (
           <section className="py-20 px-6 max-w-xl mx-auto text-center space-y-6">
             <div className="border border-rose-700/50 bg-gradient-to-b from-rose-950/40 to-stone-900/80 p-8 rounded-3xl shadow-xl space-y-4">
@@ -591,6 +757,7 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
             </div>
           </div>
         </section>}
+        </>}
 
         {/* Footer */}
         {designedPages.length > 0 ? <footer className="opendesign-site-footer"><p>Terima kasih telah menjadi bagian dari cerita kami.</p><span>Dirancang bersama Kalakai · Ruang Acara Digital</span></footer> : <footer className="py-12 text-center text-xs text-stone-500 border-t border-stone-900 space-y-2"><p>Digital Wedding Invitation oleh <span className="text-rose-400 font-semibold">Kerabat Kalakai</span></p><p className="text-[10px]">Platform Digitalisasi Undangan &amp; Buku Tamu Modern</p></footer>}

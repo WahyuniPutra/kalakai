@@ -131,31 +131,6 @@ class UserEventController extends Controller
             'theme_config.font_family' => ['nullable', Rule::in(['serif', 'sans'])],
             'theme_config.page_transition' => ['nullable', Rule::in(['fade', 'slide', 'flip', 'zoom'])],
             'theme_config.web_design' => ['nullable', 'array'],
-            'theme_config.web_design.version' => ['required_with:theme_config.web_design', 'integer', Rule::in([1])],
-            'theme_config.web_design.transition' => ['nullable', Rule::in(['fade', 'slide', 'flip', 'zoom'])],
-            'theme_config.web_design.fontFamily' => ['nullable', Rule::in(['Georgia', 'Playfair Display', 'Lora', 'Montserrat', 'Arial', 'serif', 'sans-serif'])],
-            'theme_config.web_design.sections' => ['required_with:theme_config.web_design', 'array', 'min:1', 'max:20'],
-            'theme_config.web_design.sections.*.id' => ['required', 'string', 'max:80'],
-            'theme_config.web_design.sections.*.type' => ['required', Rule::in(['hero', 'couple', 'quote', 'countdown', 'event', 'gallery', 'story', 'spotify', 'gifts', 'rsvp'])],
-            'theme_config.web_design.sections.*.eyebrow' => ['nullable', 'string', 'max:100'],
-            'theme_config.web_design.sections.*.heading' => ['nullable', 'string', 'max:180'],
-            'theme_config.web_design.sections.*.description' => ['nullable', 'string', 'max:1200'],
-            'theme_config.web_design.sections.*.background' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'theme_config.web_design.sections.*.layout' => ['required', Rule::in(['center', 'split', 'cards', 'editorial'])],
-            'theme_config.web_design.sections.*.visible' => ['required', 'boolean'],
-            'theme_config.web_design.sections.*.elements' => ['nullable', 'array', 'max:30'],
-            'theme_config.web_design.sections.*.elements.*.id' => ['required', 'string', 'max:80'],
-            'theme_config.web_design.sections.*.elements.*.type' => ['required', Rule::in(['text', 'image', 'divider', 'ornament', 'button'])],
-            'theme_config.web_design.sections.*.elements.*.content' => ['nullable', 'string', 'max:1500'],
-            'theme_config.web_design.sections.*.elements.*.imageUrl' => ['nullable', 'url', 'max:2000'],
-            'theme_config.web_design.sections.*.elements.*.linkUrl' => ['nullable', 'string', 'max:2000', 'regex:/^(https:\/\/|http:\/\/|#)[^\s]*$/i'],
-            'theme_config.web_design.sections.*.elements.*.frame' => ['required', Rule::in(['none', 'rounded', 'circle', 'polaroid'])],
-            'theme_config.web_design.sections.*.elements.*.shadow' => ['required', 'boolean'],
-            'theme_config.web_design.sections.*.elements.*.fontFamily' => ['required', Rule::in(['Georgia', 'Playfair Display', 'Lora', 'Montserrat', 'Arial', 'serif', 'sans-serif'])],
-            'theme_config.web_design.sections.*.elements.*.fontSize' => ['required', 'integer', 'between:10,96'],
-            'theme_config.web_design.sections.*.elements.*.color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'theme_config.web_design.sections.*.elements.*.align' => ['required', Rule::in(['left', 'center', 'right'])],
-            'theme_config.web_design.sections.*.elements.*.width' => ['required', 'numeric', 'between:20,100'],
             'theme_config.quote' => ['nullable', 'string', 'max:1000'],
             'theme_config.quote_source' => ['nullable', 'string', 'max:150'],
             'theme_config.audio_title' => ['nullable', 'string', 'max:255'],
@@ -199,7 +174,7 @@ class UserEventController extends Controller
         if (isset($data['theme_config']['open_design']) && strlen(json_encode($data['theme_config']['open_design']) ?: '') > 5 * 1024 * 1024) {
             throw ValidationException::withMessages(['theme_config.open_design' => 'Dokumen desain maksimal 5 MB.']);
         }
-        if (isset($data['theme_config']['web_design']) && strlen(json_encode($data['theme_config']['web_design']) ?: '') > 256 * 1024) {
+        if (isset($data['theme_config']['web_design']) && strlen(json_encode($data['theme_config']['web_design']) ?: '') > 1024 * 1024) {
             throw ValidationException::withMessages(['theme_config.web_design' => 'Desain halaman web terlalu besar.']);
         }
 
