@@ -5,6 +5,7 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   Check,
+  Compass,
   Heart,
   MapPin,
   Music2,
@@ -16,6 +17,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import PartnerLogoRail, { type PartnerBrand } from "./PartnerLogoRail";
+import InvitationStudio from "./InvitationStudio";
 
 const backendApiUrl = (process.env.KALAKAI_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -56,7 +58,7 @@ const plans = [
     price: "Rp 0",
     description: "Mulai merancang undangan dan kenali alur Kalakai.",
     features: ["3 template undangan dasar", "Hingga 50 nama tamu", "Masa aktif 7 hari", "Formulir doa & ucapan"],
-    href: "/romeo-juliet/budi-santoso",
+    href: "/register",
     action: "Mulai gratis",
     tone: "free",
   },
@@ -114,8 +116,8 @@ export default async function PublicHomePage() {
             <span>kalakai<span>.</span></span>
           </Link>
           <nav className="public-nav" aria-label="Navigasi halaman">
-            <a href="#fitur">Fitur</a>
-            <a href="#cara-kerja">Cara kerja</a>
+            <a href="#template">Template</a>
+            <a href="#jelajah">Mode Jelajah</a>
             <a href="#harga">Harga</a>
             <Link href="/mitra">Katalog mitra</Link>
             <a href="#tentang">Tentang Kalakai</a>
@@ -134,8 +136,8 @@ export default async function PublicHomePage() {
             <h1>Momen istimewa,<br />terasa dekat <em>dari awal.</em></h1>
             <p className="public-hero-lead">Undang dengan cerita yang personal. Kelola tamu dengan lebih tenang. Sambut hari bahagia dengan cara yang terasa seperti Anda.</p>
             <div className="public-hero-actions">
-              <Link className="public-button-primary" href="/romeo-juliet/budi-santoso">Jelajahi demo undangan <ArrowRight size={16} /></Link>
-              <a className="public-button-text" href="#fitur">Kenali Kalakai <ArrowRight size={15} /></a>
+              <a className="public-button-primary" href="#template">Pilih template <ArrowRight size={16} /></a>
+              <a className="public-button-text" href="#jelajah"><Compass size={17} /> Coba Mode Jelajah</a>
             </div>
             <div className="public-hero-proof"><span><Check size={14} />Undangan personal</span><i /><span><Check size={14} />RSVP &amp; daftar tamu</span><i /><span><Check size={14} />Check-in QR</span></div>
           </div>
@@ -159,6 +161,8 @@ export default async function PublicHomePage() {
         </div>
         <div className="hero-bottom-note"><span>DARI PESAN PERTAMA</span><span className="hero-note-line" /><span>HINGGA HARI PERAYAAN</span></div>
       </section>
+
+      <InvitationStudio />
 
       <section className="public-intro" id="tentang">
         <div className="public-intro-label"><span>01</span><span className="public-label-line" />CARA BARU MERAYAKAN</div>

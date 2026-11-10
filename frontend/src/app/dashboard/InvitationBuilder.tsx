@@ -5,22 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, CalendarDays, Check, Copy, Eye, Heart, MapPin, Music2, Save, Sparkles } from "lucide-react";
 import DashboardShell, { type DashboardNavItem, type DashboardUser } from "./DashboardShell";
-
-type InvitationEvent = {
-  id: number;
-  title: string;
-  slug: string;
-  event_type: string;
-  groom_name: string | null;
-  bride_name: string | null;
-  event_date: string | null;
-  location_name: string | null;
-  location_address: string | null;
-  map_url: string | null;
-  spotify_track_id: string | null;
-  is_published: boolean;
-  theme_config: Record<string, unknown> | null;
-};
+import { invitationTemplates, type InvitationTemplate, type InvitationTemplateId } from "@/lib/invitation-templates";
 
 type Draft = {
   title: string;
@@ -34,7 +19,7 @@ type Draft = {
   map_url: string;
   quote: string;
   quote_source: string;
-  template_id: "classic" | "garden" | "modern" | "blank";
+  template_id: InvitationTemplateId;
   primary_color: string;
   accent_color: string;
   font_family: "serif" | "sans";
@@ -58,12 +43,26 @@ const blankDraft: Draft = {
   canvas_elements: [],
 };
 
-const templates: { id: Draft["template_id"]; name: string; detail: string; color: string; accent: string; font: Draft["font_family"] }[] = [
-  { id: "classic", name: "Klasik", detail: "Romantis dan elegan", color: "#b85c68", accent: "#dc9a9a", font: "serif" },
-  { id: "garden", name: "Garden", detail: "Lembut bernuansa alami", color: "#54745b", accent: "#9bb48b", font: "serif" },
-  { id: "modern", name: "Modern", detail: "Bersih dan kontemporer", color: "#55768f", accent: "#9cb7c9", font: "sans" },
-  { id: "blank", name: "Mulai kosong", detail: "Atur dari awal", color: "#775f8f", accent: "#b4a1c4", font: "sans" },
-];
+const invitationOrigin = "https://kalakai.site";
+
+function applyTemplate(draft: Draft, template: InvitationTemplate, sections = draft.sections): Draft {
+  return {
+    ...draft,
+    template_id: template.id,
+    primary_color: template.color,
+    accent_color: template.accent,
+    font_family: template.font,
+    sections,
+  };
+}
+
+function getInitialDraft(template?: InvitationTemplate) {
+  if (!template) return blankDraft;
+  const sections = template.id === "blank"
+    ? { names: false, story: false, details: false, gifts: false, guestbook: false, spotify: false }
+    : blankDraft.sections;
+  return applyTemplate(blankDraft, template, sections);
+}
 
 const builderNav: DashboardNavItem[] = [
   { label: "Ringkasan", href: "/dashboard", icon: Heart },
@@ -88,9 +87,9 @@ function getSpotifyId(value: string) {
   return match?.[1] ?? ( /^[A-Za-z0-9]{22}$/.test(value.trim()) ? value.trim() : "" );
 }
 
-export default function InvitationBuilder({ eventId, user }: { eventId?: string; user: DashboardUser }) {
+export default function InvitationBuilder({ eventId, user, initialTemplate }: { eventId?: string; user: DashboardUser; initialTemplate?: InvitationTemplate }) {
   const router = useRouter();
-  const [draft, setDraft] = useState<Draft>(blankDraft);
+  const [draft, setDraft] = useState<Draft>(() => getInitialDraft(initialTemplate));
   const [isPublished, setIsPublished] = useState(false);
   const [slugTouched, setSlugTouched] = useState(Boolean(eventId));
   const [loading, setLoading] = useState(Boolean(eventId));
@@ -143,8 +142,8 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
     return () => { active = false; };
   }, [eventId]);
 
-  const eventUrl = useMemo(() => `kalakai.com/${draft.slug || "nama-acara"}/[nama-tamu]`, [draft.slug]);
-  const personalUrl = useMemo(() => `${typeof window === "undefined" ? "https://kalakai.com" : window.location.origin}/${draft.slug || "nama-acara"}/${slugify(guestName) || "nama-tamu"}`, [draft.slug, guestName]);
+  const eventUrl = `kalakai.site/${draft.slug || "nama-acara"}/[nama-tamu]`;
+  const personalUrl = `${invitationOrigin}/${draft.slug || "nama-acara"}/${slugify(guestName) || "nama-tamu"}`;
   const spotifyId = useMemo(() => getSpotifyId(draft.spotify_input), [draft.spotify_input]);
 
   function update<K extends keyof Draft>(field: K, value: Draft[K]) {
@@ -155,8 +154,8 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
     });
   }
 
-  function selectTemplate(template: (typeof templates)[number]) {
-    setDraft((current) => ({ ...current, template_id: template.id, primary_color: template.color, accent_color: template.accent, font_family: template.font, sections: template.id === "blank" ? { names: false, story: false, details: false, gifts: false, guestbook: false, spotify: false } : { names: true, story: true, details: true, gifts: true, guestbook: true, spotify: true } }));
+  function selectTemplate(template: InvitationTemplate) {
+    setDraft((current) => current.template_id === template.id ? current : applyTemplate(current, template));
   }
 
   async function saveInvitation(publish: boolean) {
@@ -203,7 +202,7 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
         throw new Error(typeof firstValidation === "string" ? firstValidation : data.message ?? "Periksa kembali data undangan.");
       }
 
-      let savedId = data.id as number;
+      const savedId = data.id as number;
       if (publish && !eventId && !data.is_published) {
         response = await fetch(`/api/user/events/${savedId}`, {
           method: "PATCH", headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -262,20 +261,26 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
 
   return <DashboardShell user={user} nav={builderNav}>
     <div className="invite-builder-heading"><div><p className="eyebrow"><span className="eyebrow-dot" />PEMBUAT UNDANGAN</p><h1>{eventId ? "Kustomisasi undangan" : "Mulai undangan baru"}</h1><p>Pilih dasar desain, isi detail acara, lalu sesuaikan tampilannya.</p></div><span className="invite-builder-plan">PAKET KERABAT FREE</span></div>
+    {!eventId && <nav className="invite-builder-guide" aria-label="Panduan editor">
+      <a href="#desain-undangan">1. Pilih desain</a>
+      <a href="#detail-undangan">2. Isi detail acara</a>
+      <a href="#simpan-undangan">3. Simpan atau terbitkan</a>
+      <Link href="/#jelajah">Coba Mode Jelajah <ArrowUpRight size={14} /></Link>
+    </nav>}
     <div className="invite-builder-layout">
       <form className="invite-builder-form" onSubmit={handleSubmit}>
-        <section className="invite-builder-section"><div className="invite-builder-section-title"><span>01</span><div><h2>Pilih titik awal</h2><p>Gunakan template atau mulai dengan kanvas kosong.</p></div></div>
-          <div className="invite-template-grid">{templates.map((template) => <button type="button" key={template.id} className={`invite-template-option${draft.template_id === template.id ? " selected" : ""}`} onClick={() => selectTemplate(template)}><span className="invite-template-swatch" style={{ background: template.color }}><Heart size={17} fill="currentColor" /></span><strong>{template.name}</strong><small>{template.detail}</small>{draft.template_id === template.id && <Check size={16} />}</button>)}</div>
+        <section className="invite-builder-section" id="desain-undangan"><div className="invite-builder-section-title"><span>01</span><div><h2>Pilih titik awal</h2><p>Ganti palet dan tipografi tanpa menghapus detail acara atau pengaturan bagian.</p></div></div>
+          <div className="invite-template-grid">{invitationTemplates.map((template) => <button type="button" key={template.id} aria-pressed={draft.template_id === template.id} className={`invite-template-option${draft.template_id === template.id ? " selected" : ""}`} onClick={() => selectTemplate(template)}><span className="invite-template-swatch" style={{ background: template.color }}><Heart size={17} fill="currentColor" /></span><strong>{template.name}</strong><small>{template.detail}</small>{draft.template_id === template.id && <Check size={16} />}</button>)}</div>
         </section>
 
-        <section className="invite-builder-section"><div className="invite-builder-section-title"><span>02</span><div><h2>Cerita acaramu</h2><p>Informasi ini akan tampil pada halaman undangan.</p></div></div>
+        <section className="invite-builder-section" id="detail-undangan"><div className="invite-builder-section-title"><span>02</span><div><h2>Cerita acaramu</h2><p>Informasi ini akan tampil pada halaman undangan.</p></div></div>
           <div className="invite-builder-fields">
             <label className="builder-field-full">Nama acara<input value={draft.title} onChange={(event) => update("title", event.target.value)} required maxLength={255} placeholder="Pernikahan Alya & Bima" /></label>
             <label>Jenis acara<select value={draft.event_type} onChange={(event) => update("event_type", event.target.value)}><option value="wedding">Pernikahan</option><option value="engagement">Pertunangan</option><option value="birthday">Ulang tahun</option><option value="other">Acara lainnya</option></select></label>
             <label>Tanggal &amp; waktu<input type="datetime-local" value={draft.event_date} onChange={(event) => update("event_date", event.target.value)} /></label>
             <label>{draft.event_type === "birthday" ? "Nama yang berulang tahun" : "Nama orang pertama"}<input value={draft.groom_name} onChange={(event) => update("groom_name", event.target.value)} placeholder="Nama lengkap" /></label>
             <label>{draft.event_type === "birthday" ? "Nama orang tua / keluarga" : "Nama orang kedua"}<input value={draft.bride_name} onChange={(event) => update("bride_name", event.target.value)} placeholder="Opsional" /></label>
-            <label className="builder-field-full">Slug URL acara<div className="builder-slug-input"><span>kalakai.com/</span><input value={draft.slug} onChange={(event) => { setSlugTouched(true); update("slug", slugify(event.target.value)); }} required maxLength={80} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="nama-acara" /><span>/[nama-tamu]</span></div><small>Tautan personal untuk setiap tamu akan memakai slug nama tamu.</small></label>
+            <label className="builder-field-full">Slug URL acara<div className="builder-slug-input"><span>kalakai.site/</span><input value={draft.slug} onChange={(event) => { setSlugTouched(true); update("slug", slugify(event.target.value)); }} required maxLength={80} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="nama-acara" /><span>/[nama-tamu]</span></div><small>Tautan personal untuk setiap tamu akan memakai slug nama tamu.</small></label>
             <label>Nama tempat<input value={draft.location_name} onChange={(event) => update("location_name", event.target.value)} placeholder="Nama gedung atau lokasi" /></label>
             <label>Tautan Google Maps<input type="url" value={draft.map_url} onChange={(event) => update("map_url", event.target.value)} placeholder="https://maps.google.com/..." /></label>
             <label className="builder-field-full">Alamat lengkap<textarea value={draft.location_address} onChange={(event) => update("location_address", event.target.value)} rows={2} placeholder="Alamat acara" /></label>
@@ -298,7 +303,7 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
 
         {error && <p className="invite-builder-error" role="alert">{error}</p>}
         {notice && <p className="invite-builder-notice" role="status"><Check size={16} />{notice}</p>}
-        <div className="invite-builder-actions"><Link href="/dashboard"><ArrowLeft size={16} />Kembali</Link><div><button type="button" className="builder-save-button" disabled={saving} onClick={() => void saveInvitation(isPublished)}><Save size={16} />{saving ? "Menyimpan…" : isPublished ? "Simpan perubahan" : "Simpan draf"}</button><button type="button" className="builder-publish-button" disabled={saving} onClick={() => void saveInvitation(true)}><Sparkles size={16} />{saving ? "Memproses…" : isPublished ? "Simpan & perbarui" : "Terbitkan undangan"}</button></div></div>
+        <div className="invite-builder-actions" id="simpan-undangan"><Link href="/dashboard"><ArrowLeft size={16} />Kembali</Link><div><button type="button" className="builder-save-button" disabled={saving} onClick={() => void saveInvitation(isPublished)}><Save size={16} />{saving ? "Menyimpan…" : isPublished ? "Simpan perubahan" : "Simpan draf"}</button><button type="button" className="builder-publish-button" disabled={saving} onClick={() => void saveInvitation(true)}><Sparkles size={16} />{saving ? "Memproses…" : isPublished ? "Simpan & perbarui" : "Terbitkan undangan"}</button></div></div>
       </form>
 
       <aside className="invite-builder-preview-column"><div className="invite-preview-label"><Eye size={16} />PRATINJAU KANVAS · PILIH ELEMEN UNTUK MENGATUR</div><div className={`builder-phone-preview template-${draft.template_id}`} onPointerMove={(event) => draggingElement && moveCanvasElement(event, draggingElement)} onPointerUp={() => setDraggingElement(null)} onPointerLeave={() => setDraggingElement(null)} style={{ "--builder-primary": draft.primary_color, "--builder-accent": draft.accent_color, backgroundImage: draft.hero_image_url ? `linear-gradient(#14221b75,#14221bd9),url("${draft.hero_image_url}")` : undefined } as React.CSSProperties}><div className="builder-phone-top"><span>UNDANGAN DIGITAL</span><Heart size={15} /></div><div className="builder-preview-main"><span className="builder-preview-kicker">{draft.event_type === "birthday" ? "THE CELEBRATION OF" : "THE WEDDING OF"}</span><h2>{draft.groom_name || "Nama Pertama"}<i>&amp;</i>{draft.bride_name || "Nama Kedua"}</h2><span className="builder-preview-line" /><p>{draft.quote || "Kalimat pembuka undangan Anda akan tampil di sini."}</p><div className="builder-preview-meta"><span><CalendarDays size={14} />{draft.event_date ? new Date(draft.event_date).toLocaleDateString("id-ID", { dateStyle: "long" }) : "Tanggal acara"}</span><span><MapPin size={14} />{draft.location_name || "Lokasi acara"}</span></div><button type="button" tabIndex={-1}>Buka Undangan <Heart size={13} /></button></div><div className="builder-phone-bottom">DENGAN PENUH SUKACITA · KALAKAI</div>{draft.canvas_elements.map((element) => <div key={element.id} onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); setSelectedElement(element.id); setDraggingElement(element.id); }} onClick={() => setSelectedElement(element.id)} className={`builder-canvas-element ${element.type} effect-${element.effect} frame-${element.frame}${selectedElement === element.id ? " selected" : ""}`} style={{ left: `${element.x}%`, top: `${element.y}%`, width: `${element.width}%`, color: element.color, fontSize: `${element.font_size}px`, transform: `translate(-50%,-50%) rotate(${element.rotation}deg)` }}>{element.type === "photo" ? element.image_url ? <img src={element.image_url} alt="Elemen foto" /> : <span>＋ Foto</span> : element.text}</div>)}</div>
