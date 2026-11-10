@@ -1,5 +1,6 @@
 import AuthForm from "@/app/auth/AuthForm";
+import { findInvitationTemplate } from "@/lib/invitation-templates";
 
-export default function RegisterPage() {
-  return <AuthForm mode="register" />;
+export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
+  return <AuthForm mode="register" template={findInvitationTemplate((await searchParams).template)} />;
 }

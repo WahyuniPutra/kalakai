@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ArrowLeft, ArrowRight, Heart, ShieldCheck } from "lucide-react";
+import type { InvitationTemplate } from "@/lib/invitation-templates";
 
-export default function AuthForm({ mode }: { mode: "login" | "register" }) {
+export default function AuthForm({ mode, template }: { mode: "login" | "register"; template?: InvitationTemplate }) {
   const router = useRouter();
   const isRegister = mode === "register";
   const [name, setName] = useState("");
@@ -56,7 +57,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace(template && payload.user?.role === "user" ? `/dashboard/undangan/new?template=${template.id}` : "/dashboard");
       router.refresh();
     } catch {
       setError("Belum dapat terhubung ke Kalakai. Periksa koneksi lalu coba lagi.");
@@ -86,6 +87,9 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
           <p className="auth-eyebrow">{isRegister ? "MULAI BERSAMA KALAKAI" : "SELAMAT DATANG KEMBALI"}</p>
           <h2>{isRegister ? "Buat akun Anda" : "Masuk ke akun"}</h2>
           <p className="auth-intro">{isRegister ? "Buat ruang untuk merancang acara istimewa Anda atau daftarkan usaha sebagai mitra." : "Lanjutkan mengelola undangan dan acara Anda."}</p>
+          {template && (!isRegister || accountType === "user") && (
+            <p className="auth-intro">Pilihan Anda: <strong>{template.name}</strong>. Lanjutkan untuk membuka editor dengan pilihan ini.</p>
+          )}
 
           <form className="auth-fields" onSubmit={handleSubmit}>
             {isRegister && <label>Nama lengkap<input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Nama Anda" required maxLength={255} /></label>}
@@ -108,7 +112,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
             </button>
           </form>
 
-          <p className="auth-switch">{isRegister ? "Sudah punya akun?" : "Belum punya akun?"} <Link href={isRegister ? "/login" : "/register"}>{isRegister ? "Masuk" : "Daftar gratis"}</Link></p>
+          <p className="auth-switch">{isRegister ? "Sudah punya akun?" : "Belum punya akun?"} <Link href={`${isRegister ? "/login" : "/register"}${template ? `?template=${template.id}` : ""}`}>{isRegister ? "Masuk" : "Daftar gratis"}</Link></p>
           <p className="auth-terms">Dengan melanjutkan, Anda menyetujui ketentuan penggunaan dan kebijakan privasi Kalakai.</p>
         </div>
         <p className="auth-side-note">Teknologi untuk momen yang berarti <Heart size={12} fill="currentColor" /></p>
