@@ -43,6 +43,10 @@ npm run dev
 
 Server frontend akan berjalan di `http://localhost:3000`.
 
+Sebelum Next.js mulai, `npm run dev` otomatis membangun studio OpenDesign yang tertanam di tab **Template** dan **Editor**. Pada pemakaian pertama, skrip akan menyiapkan pnpm melalui npx bila belum tersedia. OpenDesign sudah disesuaikan untuk template undangan Kalakai; desain, halaman, brand kit, dan font disimpan bersama data acara melalui Laravel. Bundle editor dibuat otomatis dan tidak perlu menjalankan Wrangler atau server OpenDesign terpisah.
+
+Sumber OpenDesign dan lisensi MIT tersedia di [`frontend/opendesign`](frontend/opendesign) dan [repositori resminya](https://github.com/clawnify/OpenDesign).
+
 ---
 
 ## Konfigurasi Environment

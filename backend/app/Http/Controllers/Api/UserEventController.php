@@ -7,7 +7,9 @@ use App\Models\Event;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UserEventController extends Controller
 {
@@ -40,9 +42,68 @@ class UserEventController extends Controller
     {
         $this->authorizeUserRole($request);
         $event = $request->user()->events()->findOrFail($eventId);
-        $event->update($this->validatedData($request, $event));
+        $data = $this->validatedData($request, $event);
+        if (isset($data['theme_config'])) {
+            // Builder form edits are partial with respect to OpenDesign. Preserve
+            // its independently autosaved pages and brand kits when those fields
+            // are not sent by the form.
+            $existingTheme = $event->theme_config ?? [];
+            if (!array_key_exists('open_design', $data['theme_config']) && isset($existingTheme['open_design'])) {
+                $data['theme_config']['open_design'] = $existingTheme['open_design'];
+            }
+        }
+        $event->update($data);
 
         return response()->json($event->fresh()->loadCount('guests'));
+    }
+
+    public function uploadAsset(Request $request, int $eventId): JsonResponse
+    {
+        $this->authorizeUserRole($request);
+        $request->user()->events()->findOrFail($eventId);
+        $validated = $request->validate([
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $path = $validated['image']->store("undangan-assets/{$request->user()->id}", 'public');
+
+        return response()->json(['path' => $path], 201);
+    }
+
+    public function fonts(Request $request, int $eventId): JsonResponse
+    {
+        $this->authorizeUserRole($request);
+        $event = $request->user()->events()->findOrFail($eventId);
+        $theme = $event->theme_config ?? [];
+        $openDesign = $theme['open_design'] ?? ['design' => null, 'brand_kits' => [], 'fonts' => []];
+        $fonts = $openDesign['fonts'] ?? [];
+        if ($request->isMethod('get')) return response()->json($fonts);
+
+        $file = $request->validate(['file' => ['required', 'file', 'max:10240']])['file'];
+        $extension = strtolower($file->getClientOriginalExtension());
+        abort_unless(in_array($extension, ['ttf', 'otf', 'woff', 'woff2'], true), 422, 'Gunakan file font TTF, OTF, WOFF, atau WOFF2.');
+        $path = $file->store("undangan-assets/{$request->user()->id}/fonts", 'public');
+        $font = [
+            'family' => 'KalakaiFont' . str_replace('-', '', (string) str()->uuid()),
+            'name' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+            'url' => '/api/assets/' . $path,
+        ];
+        $openDesign['fonts'] = [...$fonts, $font];
+        $theme['open_design'] = $openDesign;
+        $event->update(['theme_config' => $theme]);
+        return response()->json($font, 201);
+    }
+
+    public function publicAsset(string $path)
+    {
+        abort_unless(str_starts_with($path, 'undangan-assets/') && !str_contains($path, '..'), 404);
+        $disk = Storage::disk('public');
+        abort_unless($disk->exists($path), 404);
+
+        return response()->file($disk->path($path), [
+            'Cache-Control' => 'public, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     private function authorizeUserRole(Request $request): void
@@ -68,6 +129,33 @@ class UserEventController extends Controller
             'theme_config.primary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'theme_config.accent_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'theme_config.font_family' => ['nullable', Rule::in(['serif', 'sans'])],
+            'theme_config.page_transition' => ['nullable', Rule::in(['fade', 'slide', 'flip', 'zoom'])],
+            'theme_config.web_design' => ['nullable', 'array'],
+            'theme_config.web_design.version' => ['required_with:theme_config.web_design', 'integer', Rule::in([1])],
+            'theme_config.web_design.transition' => ['nullable', Rule::in(['fade', 'slide', 'flip', 'zoom'])],
+            'theme_config.web_design.fontFamily' => ['nullable', Rule::in(['Georgia', 'Playfair Display', 'Lora', 'Montserrat', 'Arial', 'serif', 'sans-serif'])],
+            'theme_config.web_design.sections' => ['required_with:theme_config.web_design', 'array', 'min:1', 'max:20'],
+            'theme_config.web_design.sections.*.id' => ['required', 'string', 'max:80'],
+            'theme_config.web_design.sections.*.type' => ['required', Rule::in(['hero', 'couple', 'quote', 'countdown', 'event', 'gallery', 'story', 'spotify', 'gifts', 'rsvp'])],
+            'theme_config.web_design.sections.*.eyebrow' => ['nullable', 'string', 'max:100'],
+            'theme_config.web_design.sections.*.heading' => ['nullable', 'string', 'max:180'],
+            'theme_config.web_design.sections.*.description' => ['nullable', 'string', 'max:1200'],
+            'theme_config.web_design.sections.*.background' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'theme_config.web_design.sections.*.layout' => ['required', Rule::in(['center', 'split', 'cards', 'editorial'])],
+            'theme_config.web_design.sections.*.visible' => ['required', 'boolean'],
+            'theme_config.web_design.sections.*.elements' => ['nullable', 'array', 'max:30'],
+            'theme_config.web_design.sections.*.elements.*.id' => ['required', 'string', 'max:80'],
+            'theme_config.web_design.sections.*.elements.*.type' => ['required', Rule::in(['text', 'image', 'divider', 'ornament', 'button'])],
+            'theme_config.web_design.sections.*.elements.*.content' => ['nullable', 'string', 'max:1500'],
+            'theme_config.web_design.sections.*.elements.*.imageUrl' => ['nullable', 'url', 'max:2000'],
+            'theme_config.web_design.sections.*.elements.*.linkUrl' => ['nullable', 'string', 'max:2000', 'regex:/^(https:\/\/|http:\/\/|#)[^\s]*$/i'],
+            'theme_config.web_design.sections.*.elements.*.frame' => ['required', Rule::in(['none', 'rounded', 'circle', 'polaroid'])],
+            'theme_config.web_design.sections.*.elements.*.shadow' => ['required', 'boolean'],
+            'theme_config.web_design.sections.*.elements.*.fontFamily' => ['required', Rule::in(['Georgia', 'Playfair Display', 'Lora', 'Montserrat', 'Arial', 'serif', 'sans-serif'])],
+            'theme_config.web_design.sections.*.elements.*.fontSize' => ['required', 'integer', 'between:10,96'],
+            'theme_config.web_design.sections.*.elements.*.color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'theme_config.web_design.sections.*.elements.*.align' => ['required', Rule::in(['left', 'center', 'right'])],
+            'theme_config.web_design.sections.*.elements.*.width' => ['required', 'numeric', 'between:20,100'],
             'theme_config.quote' => ['nullable', 'string', 'max:1000'],
             'theme_config.quote_source' => ['nullable', 'string', 'max:150'],
             'theme_config.audio_title' => ['nullable', 'string', 'max:255'],
@@ -81,14 +169,22 @@ class UserEventController extends Controller
             'theme_config.sections.guestbook' => ['sometimes', 'boolean'],
             'theme_config.sections.spotify' => ['sometimes', 'boolean'],
             'theme_config.canvas_elements' => ['nullable', 'array', 'max:40'],
+            // OpenDesign stores serializable Fabric pages, brand kits and optional font metadata.
+            // Keep the document attached to the owning event and bound its total request size.
+            'theme_config.open_design' => ['nullable', 'array'],
             'theme_config.canvas_elements.*.id' => ['required', 'string', 'max:80'],
-            'theme_config.canvas_elements.*.type' => ['required', Rule::in(['text', 'ornament', 'photo'])],
+            'theme_config.canvas_elements.*.page' => ['required', Rule::in(['cover', 'names', 'story', 'details', 'gifts', 'guestbook'])],
+            'theme_config.canvas_elements.*.type' => ['required', Rule::in(['text', 'ornament', 'photo', 'rect', 'circle', 'line'])],
             'theme_config.canvas_elements.*.text' => ['nullable', 'string', 'max:500'],
             'theme_config.canvas_elements.*.image_url' => ['nullable', 'url', 'max:2000'],
             'theme_config.canvas_elements.*.x' => ['required', 'numeric', 'between:0,100'],
             'theme_config.canvas_elements.*.y' => ['required', 'numeric', 'between:0,100'],
             'theme_config.canvas_elements.*.width' => ['required', 'numeric', 'between:5,100'],
+            'theme_config.canvas_elements.*.height' => ['required', 'numeric', 'between:1,100'],
             'theme_config.canvas_elements.*.font_size' => ['required', 'integer', 'between:8,100'],
+            'theme_config.canvas_elements.*.font_family' => ['required', Rule::in(['serif', 'sans'])],
+            'theme_config.canvas_elements.*.font_style' => ['required', Rule::in(['normal', 'bold', 'italic', 'bold italic'])],
+            'theme_config.canvas_elements.*.opacity' => ['required', 'numeric', 'between:0,1'],
             'theme_config.canvas_elements.*.color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'theme_config.canvas_elements.*.rotation' => ['required', 'numeric', 'between:-360,360'],
             'theme_config.canvas_elements.*.effect' => ['required', Rule::in(['none', 'shadow', 'glow', 'outline'])],
@@ -100,8 +196,22 @@ class UserEventController extends Controller
             'is_published' => ['sometimes', 'boolean'],
         ])->validate();
 
+        if (isset($data['theme_config']['open_design']) && strlen(json_encode($data['theme_config']['open_design']) ?: '') > 5 * 1024 * 1024) {
+            throw ValidationException::withMessages(['theme_config.open_design' => 'Dokumen desain maksimal 5 MB.']);
+        }
+        if (isset($data['theme_config']['web_design']) && strlen(json_encode($data['theme_config']['web_design']) ?: '') > 256 * 1024) {
+            throw ValidationException::withMessages(['theme_config.web_design' => 'Desain halaman web terlalu besar.']);
+        }
+
         if (isset($data['theme_config'])) {
             $data['theme_config'] = array_filter($data['theme_config'], static fn ($value) => $value !== null && $value !== '');
+            if (($event?->package_code ?? 'free') === 'free') {
+                $data['theme_config']['page_transition'] = 'fade';
+                if (isset($data['theme_config']['web_design'])) {
+                    $data['theme_config']['web_design']['transition'] = 'fade';
+                    $data['theme_config']['web_design']['sections'] = array_slice($data['theme_config']['web_design']['sections'], 0, 10);
+                }
+            }
         }
 
         return $data;

@@ -13,8 +13,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://kalakai.site"),
   title: "Kalakai — Ruang Acara Digital",
   description: "Kelola undangan digital, tamu, RSVP, dan check-in QR acara Anda bersama Kalakai.",
+  openGraph: {
+    title: "Kalakai — Ruang Acara Digital",
+    description: "Kelola undangan digital, tamu, RSVP, dan check-in QR acara Anda bersama Kalakai.",
+    url: "https://kalakai.site",
+    siteName: "Kalakai",
+    locale: "id_ID",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

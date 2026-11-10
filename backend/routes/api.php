@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\EventApiController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AdminEventPackageController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PartnerVerificationController;
 use App\Http\Controllers\Api\UserEventController;
@@ -41,10 +42,14 @@ Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middl
 Route::middleware('auth:sanctum')->prefix('user/events')->group(function () {
     Route::get('/', [UserEventController::class, 'index']);
     Route::post('/', [UserEventController::class, 'store']);
+    Route::post('/{eventId}/assets', [UserEventController::class, 'uploadAsset']);
+    Route::match(['get', 'post'], '/{eventId}/fonts', [UserEventController::class, 'fonts']);
     Route::get('/{eventId}', [UserEventController::class, 'show']);
     Route::patch('/{eventId}', [UserEventController::class, 'update']);
 });
+Route::get('/public-assets/{path}', [UserEventController::class, 'publicAsset'])->where('path', '.*');
 Route::patch('/admin/partners/{partnerProfile}/status', [PartnerVerificationController::class, 'update'])->middleware('auth:sanctum');
+Route::patch('/admin/events/{eventId}/package', [AdminEventPackageController::class, 'update'])->middleware('auth:sanctum');
 
 Route::get('/partners', function () {
     return PartnerProfile::query()

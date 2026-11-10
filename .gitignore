@@ -10,6 +10,7 @@
 **/node_modules/
 **/vendor/
 **/.next/
+frontend/public/opendesign/
 **/out/
 **/dist/
 **/build/
@@ -22,3 +23,6 @@ backend/database/*.sqlite
 backend/storage/*.sqlite
 backend/storage/logs/*
 backend/TEST-ACCOUNTS.md
+
+# Local coding-agent instructions
+/AGENTS.md

@@ -1,17 +1,22 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState, useRef } from "react";
+import dynamic from "next/dynamic";
+import InvitationWebRenderer from "./InvitationWebRenderer";
+import { createDefaultInvitationWebDesign, normalizeInvitationWebDesign } from "../../invitation-web-types";
 import { 
   Heart, Calendar, MapPin, Music, VolumeX, Volume2, 
   Copy, Check, Send, QrCode, Clock, Sparkles, Navigation 
 } from "lucide-react";
+
+const OpenDesignInvitationPages = dynamic(() => import("./OpenDesignInvitationPages"), { ssr: false });
 
 interface EventData {
   id: number;
   title: string;
   event_type: string;
   slug: string;
+  package_code?: "free" | "bahagia" | "resepsi";
   groom_name: string | null;
   bride_name: string | null;
   event_date: string | null;
@@ -21,6 +26,8 @@ interface EventData {
   spotify_track_id: string | null;
   theme_config: {
     template_id?: string;
+    page_transition?: string;
+    web_design?: unknown;
     primary_color?: string;
     accent_color?: string;
     font_family?: string;
@@ -30,7 +37,8 @@ interface EventData {
     audio_title?: string;
     audio_preview_url?: string;
     sections?: Record<string, boolean>;
-    canvas_elements?: Array<{ id: string; type: "text" | "ornament" | "photo"; text: string; image_url: string; x: number; y: number; width: number; font_size: number; color: string; rotation: number; effect: "none" | "shadow" | "glow" | "outline"; frame: "none" | "round" | "oval" | "ornate" }>;
+    canvas_elements?: Array<{ id: string; page?: "cover" | "names" | "story" | "details" | "gifts" | "guestbook"; type: "text" | "ornament" | "photo" | "rect" | "circle" | "line"; text: string; image_url: string; x: number; y: number; width: number; height?: number; font_size: number; font_family?: "serif" | "sans"; font_style?: "normal" | "bold" | "italic" | "bold italic"; opacity?: number; color: string; rotation: number; effect: "none" | "shadow" | "glow" | "outline"; frame: "none" | "round" | "oval" | "ornate" }>;
+    open_design?: { design?: { width: number; height: number; pages?: Array<{ id: string; title: string; canvas_json: string; sort_order: number }> } };
     love_story?: Array<{ year: string; title: string; desc: string }>;
   } | null;
   gift_accounts?: Array<{
@@ -199,6 +207,35 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
     }
   };
 
+  const theme = event?.theme_config ?? {};
+  const displayNames = [event?.groom_name, event?.bride_name].filter((name): name is string => Boolean(name));
+  const invitationTitle = displayNames.length ? displayNames.join(" & ") : event?.title ?? "Undangan";
+  const designedPages = useMemo(() => (theme.open_design?.design?.pages ?? []).filter((page) => page.canvas_json && page.canvas_json !== "{}"), [theme.open_design?.design?.pages]);
+  const designedWidth = theme.open_design?.design?.width ?? 1080;
+  const designedHeight = theme.open_design?.design?.height ?? 1920;
+  const webDesign = theme.web_design ? normalizeInvitationWebDesign(theme.web_design) : designedPages.length > 0 ? createDefaultInvitationWebDesign() : null;
+  const invitationFields = useMemo(() => {
+    const eventDateText = event?.event_date ? new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(event.event_date)) : "";
+    const names = displayNames.join(" & ");
+    return {
+      event_title: event?.title ?? "",
+      event_type: event?.event_type === "birthday" ? "MOMEN ULANG TAHUN" : event?.event_type === "engagement" ? "MOMEN PERTUNANGAN" : "WALIMATUL 'URSY",
+      groom_name: event?.groom_name ?? "",
+      bride_name: event?.bride_name ?? "",
+      couple_names: names || event?.title || "",
+      event_date: eventDateText,
+      location_name: event?.location_name || "",
+      location_address: event?.location_address || "",
+      map_url: event?.map_url || "",
+      quote: theme.quote || "",
+      quote_source: theme.quote_source || "",
+      hero_image_url: theme.hero_image_url || "",
+      love_story: theme.love_story?.map((story) => `${story.year} · ${story.title}\n${story.desc}`).join("\n\n") || "",
+      guest_name: guest?.name ?? "",
+    };
+  }, [event?.title, event?.event_type, event?.groom_name, event?.bride_name, event?.event_date, event?.location_name, event?.location_address, event?.map_url, theme.quote, theme.quote_source, theme.hero_image_url, theme.love_story, guest?.name]);
+
+
   if (loading) {
     return (
       <div className="min-h-screen bg-rose-950 flex flex-col items-center justify-center text-rose-100 font-serif">
@@ -217,11 +254,10 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
     );
   }
 
-  const theme = event.theme_config ?? {};
   const sections = theme.sections as Record<string, boolean> | undefined;
   const showSection = (name: string) => sections?.[name] ?? true;
-  const displayNames = [event.groom_name, event.bride_name].filter(Boolean);
-  const invitationTitle = displayNames.length ? displayNames.join(" & ") : event.title;
+  const hasCanvasPage = (page: string) => Boolean(theme.canvas_elements?.some((element) => (element.page ?? "cover") === page));
+  const renderCanvasElements = (page: "cover" | "names" | "story" | "details" | "gifts" | "guestbook") => <div className="invitation-canvas-elements" aria-label={`Elemen desain ${page}`}>{theme.canvas_elements?.filter((element) => (element.page ?? "cover") === page).map((element) => <div key={element.id} className={`invitation-canvas-element ${element.type} effect-${element.effect} frame-${element.frame}`} style={{ left: `${element.x}%`, top: `${element.y}%`, width: `${element.width}%`, height: `${element.height ?? 12}%`, color: element.color, backgroundColor: element.type === "rect" || element.type === "circle" ? element.color : undefined, fontSize: `clamp(12px, ${(element.font_size / 640) * 100}vh, 80px)`, fontFamily: element.font_family === "sans" ? "Arial, sans-serif" : "Georgia, serif", fontWeight: element.font_style?.includes("bold") ? 700 : undefined, fontStyle: element.font_style?.includes("italic") ? "italic" : undefined, opacity: element.opacity ?? 1, transform: `translate(-50%,-50%) rotate(${element.rotation}deg)` }}>{element.type === "photo" ? element.image_url ? <img src={element.image_url} alt="Foto pada undangan" /> : null : element.type === "rect" || element.type === "circle" || element.type === "line" ? null : element.text}</div>)}</div>;
   const cssTheme = {
     "--invite-primary": theme.primary_color || "#e11d48",
     "--invite-accent": theme.accent_color || "#fb7185",
@@ -295,9 +331,12 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
 
       {/* 2. Main Invitation Content */}
       <div className={`transition-opacity duration-1000 ${isOpen ? "opacity-100" : "opacity-0"}`}>
+        {webDesign && isOpen && <InvitationWebRenderer design={{ ...webDesign, sections: webDesign.sections.filter((section) => section.type !== "gifts" && section.type !== "rsvp") }} event={event} guestName={guest?.name} timeLeft={timeLeft} onRsvp={() => document.getElementById("rsvp")?.scrollIntoView({ behavior: "smooth" })} />}
+        {!webDesign && designedPages.length > 0 && isOpen && <OpenDesignInvitationPages pages={designedPages} width={designedWidth} height={designedHeight} names={displayNames.join(" & ")} guestName={guest?.name ?? ""} eventDate={event.event_date ?? ""} location={event.location_name || event.location_address || ""} fields={invitationFields} packageCode={event.package_code ?? "free"} pageTransition={theme.page_transition ?? "fade"} isActive={isOpen} />}
+        {!webDesign && designedPages.length === 0 && <>
         {/* Hero Section */}
         <section className="min-h-screen flex flex-col items-center justify-center text-center p-6 bg-gradient-to-b from-stone-950 via-rose-950/60 to-stone-950 relative" style={theme.hero_image_url ? { backgroundImage: `linear-gradient(#11181499,#111814d9),url("${theme.hero_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
-          <div className="invitation-canvas-elements" aria-label="Elemen desain undangan">{theme.canvas_elements?.map((element) => <div key={element.id} className={`invitation-canvas-element ${element.type} effect-${element.effect} frame-${element.frame}`} style={{ left: `${element.x}%`, top: `${element.y}%`, width: `${element.width}%`, color: element.color, fontSize: `${element.font_size}px`, transform: `translate(-50%,-50%) rotate(${element.rotation}deg)` }}>{element.type === "photo" ? element.image_url ? <img src={element.image_url} alt="Foto pada undangan" /> : null : element.text}</div>)}</div>
+          {renderCanvasElements("cover")}
           <div className="max-w-2xl mx-auto space-y-6">
             <span className="text-xs uppercase tracking-[0.3em] text-rose-300 font-mono">{event.event_type === "birthday" ? "MOMEN ULANG TAHUN" : event.event_type === "engagement" ? "MOMEN PERTUNANGAN" : "WALIMATUL &apos;URSY"}</span>
             <h1 className="text-5xl sm:text-7xl font-serif text-rose-100 font-bold tracking-tight">
@@ -328,7 +367,8 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
         {showSection("spotify") && event.spotify_track_id && <section className="spotify-invitation-section"><div><Music className="h-5 w-5" /><span>{theme.audio_title || "Lagu pilihan untuk hari istimewa"}</span></div><iframe title={`Spotify: ${theme.audio_title || invitationTitle}`} src={`https://open.spotify.com/embed/track/${event.spotify_track_id}?utm_source=generator&theme=0`} width="100%" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" /></section>}
 
         {/* Groom & Bride Section */}
-        {showSection("names") && <section className="py-20 px-6 max-w-4xl mx-auto text-center space-y-12">
+        {showSection("names") && <section className="relative py-20 px-6 max-w-4xl mx-auto text-center space-y-12">
+          {renderCanvasElements("names")}
           <div className="space-y-3">
             <h2 className="text-3xl font-serif font-bold text-white">{event.event_type === "birthday" ? "Yang Berbahagia" : event.event_type === "engagement" ? "Pasangan yang Berbahagia" : "Mempelai Bahagia"}</h2>
             <p className="text-stone-400 text-sm">{event.event_type === "birthday" ? "Dengan penuh syukur, kami mengundang Anda untuk merayakan hari istimewa bersama." : "Dengan penuh rasa syukur, kami mengundang Anda untuk merayakan momen istimewa bersama:"}</p>
@@ -339,10 +379,10 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
           </div>
         </section>}
 
-        {showSection("story") && !!theme.love_story?.length && <section className="py-20 px-6 max-w-3xl mx-auto"><div className="text-center mb-10"><p className="text-xs uppercase tracking-[0.25em] text-rose-300">CERITA KAMI</p><h2 className="mt-3 text-3xl font-serif text-white">Perjalanan menuju hari ini</h2></div><div className="space-y-4">{theme.love_story.map((story, index) => <article key={`${story.year}-${index}`} className="rounded-2xl border border-stone-800 bg-stone-900/70 p-6"><span className="text-sm font-semibold" style={{ color: theme.accent_color || theme.primary_color || "#fb7185" }}>{story.year}</span><h3 className="mt-2 text-xl font-serif text-white">{story.title}</h3><p className="mt-2 text-sm leading-relaxed text-stone-300">{story.desc}</p></article>)}</div></section>}
+        {showSection("story") && (!!theme.love_story?.length || hasCanvasPage("story")) && <section className="relative py-20 px-6 max-w-3xl mx-auto">{renderCanvasElements("story")}<div className="text-center mb-10"><p className="text-xs uppercase tracking-[0.25em] text-rose-300">CERITA KAMI</p><h2 className="mt-3 text-3xl font-serif text-white">Perjalanan menuju hari ini</h2></div><div className="space-y-4">{theme.love_story?.map((story, index) => <article key={`${story.year}-${index}`} className="rounded-2xl border border-stone-800 bg-stone-900/70 p-6"><span className="text-sm font-semibold" style={{ color: theme.accent_color || theme.primary_color || "#fb7185" }}>{story.year}</span><h3 className="mt-2 text-xl font-serif text-white">{story.title}</h3><p className="mt-2 text-sm leading-relaxed text-stone-300">{story.desc}</p></article>)}</div></section>}
 
         {/* Schedule & Location Section */}
-        {showSection("details") && <section className="py-20 px-6 bg-stone-900/40 border-y border-stone-900">
+        {showSection("details") && <section className="relative py-20 px-6 bg-stone-900/40 border-y border-stone-900">{renderCanvasElements("details")}
           <div className="max-w-3xl mx-auto text-center space-y-8">
             <h2 className="text-3xl font-serif font-bold text-white">Detail Acara</h2>
 
@@ -368,6 +408,7 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
             </div>
           </div>
         </section>}
+        </>}
 
         {/* 3. Guest Reception QR Code Pass */}
         {showSection("guestbook") && guest && (
@@ -404,15 +445,15 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
         )}
 
         {/* 4. Digital Envelope */}
-        {showSection("gifts") && event.gift_accounts && event.gift_accounts.length > 0 && (
-          <section className="py-20 px-6 max-w-3xl mx-auto text-center space-y-8">
+        {showSection("gifts") && ((event.gift_accounts?.length ?? 0) > 0 || hasCanvasPage("gifts")) && (
+          <section className="relative py-20 px-6 max-w-3xl mx-auto text-center space-y-8">{renderCanvasElements("gifts")}
             <div className="space-y-2">
               <h2 className="text-3xl font-serif font-bold text-white">Tanda Kasih (Amplop Digital)</h2>
               <p className="text-stone-400 text-sm">Doa restu Anda merupakan karunia terindah bagi kami. Jika ingin memberikan tanda kasih secara digital, Anda dapat melalui:</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {event.gift_accounts.map((acc) => (
+              {event.gift_accounts?.map((acc) => (
                 <div key={acc.id} className="bg-stone-900 border border-stone-800 p-6 rounded-2xl text-left flex flex-col justify-between space-y-4">
                   <div>
                     <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">
@@ -445,7 +486,7 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
         )}
 
         {/* 5. RSVP & Wishes Feed */}
-        {showSection("guestbook") && <section className="py-20 px-6 bg-stone-900/30 border-t border-stone-900">
+        {showSection("guestbook") && <section id="rsvp" className="relative py-20 px-6 bg-stone-900/30 border-t border-stone-900">{renderCanvasElements("guestbook")}
           <div className="max-w-2xl mx-auto space-y-8">
             <div className="text-center space-y-2">
               <h2 className="text-3xl font-serif font-bold text-white">Konfirmasi Kehadiran &amp; Ucapan</h2>
@@ -552,10 +593,7 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
         </section>}
 
         {/* Footer */}
-        <footer className="py-12 text-center text-xs text-stone-500 border-t border-stone-900 space-y-2">
-          <p>Digital Wedding Invitation oleh <span className="text-rose-400 font-semibold">Kerabat Kalakai</span></p>
-          <p className="text-[10px]">Platform Digitalisasi Undangan &amp; Buku Tamu Modern</p>
-        </footer>
+        {designedPages.length > 0 ? <footer className="opendesign-site-footer"><p>Terima kasih telah menjadi bagian dari cerita kami.</p><span>Dirancang bersama Kalakai · Ruang Acara Digital</span></footer> : <footer className="py-12 text-center text-xs text-stone-500 border-t border-stone-900 space-y-2"><p>Digital Wedding Invitation oleh <span className="text-rose-400 font-semibold">Kerabat Kalakai</span></p><p className="text-[10px]">Platform Digitalisasi Undangan &amp; Buku Tamu Modern</p></footer>}
       </div>
     </div>
   );

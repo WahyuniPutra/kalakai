@@ -22,6 +22,11 @@ class Event extends Model
         ];
     }
 
+    public function hasPremiumDesign(): bool
+    {
+        return in_array($this->package_code, ['bahagia', 'resepsi'], true);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
