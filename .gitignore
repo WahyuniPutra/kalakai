@@ -1,0 +1,24 @@
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and generated output
+**/node_modules/
+**/vendor/
+**/.next/
+**/out/
+**/dist/
+**/build/
+**/coverage/
+**/*.tsbuildinfo
+**/*.log
+
+# Local database and storage files
+backend/database/*.sqlite
+backend/storage/*.sqlite
+backend/storage/logs/*
+backend/TEST-ACCOUNTS.md
