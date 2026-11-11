@@ -56,7 +56,7 @@ export default async function ServicesPage({ searchParams }: PageProps<"/dashboa
             <p className="work-request-meta">{[isPartner ? item.user?.name : item.partner_profile?.business_name, item.event?.title, item.quantity ? `${item.quantity} unit` : null, calendar.format(new Date(item.created_at))].filter(Boolean).join(" · ")}</p>
             {item.description && <p className="work-request-description">{item.description}</p>}
             {item.quoted_price !== null && <div className="work-quote"><span>Penawaran total</span><strong>{rupiah(item.quoted_price)}</strong>{item.details?.quote_note && <p>{item.details.quote_note}</p>}</div>}
-            <RequestActions item={item} role={user.role} />
+            <RequestActions item={item} role={isPartner ? "partner" : "user"} />
           </article>)}
         </div> : <div className="work-empty"><ClipboardList size={25} /><h3>{status || q ? "Tidak ada permintaan yang cocok" : "Belum ada permintaan"}</h3><p>{status || q ? "Coba ganti pencarian atau status." : isPartner ? "Permintaan pelanggan akan muncul di sini." : "Ajukan kebutuhan acara ke mitra yang sesuai."}</p></div>}
         {(requests.last_page > 1 || page > 1) && <nav className="work-pagination" aria-label="Halaman permintaan">
