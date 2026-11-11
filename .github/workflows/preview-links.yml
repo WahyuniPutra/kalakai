@@ -1,0 +1,96 @@
+name: Kalakai preview links
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+  schedule:
+    - cron: '4-59/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+
+concurrency:
+  group: kalakai-preview-links
+  cancel-in-progress: false
+
+jobs:
+  link:
+    if: github.repository == 'WahyuniPutra/kalakai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      # This job never checks out or executes PR code. It only talks to GitHub
+      # and checks an HTTPS response header from the fixed preview domain.
+      - name: Publish or update the PR preview link
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures
+          import json
+          import os
+          import re
+          import urllib.error
+          import urllib.request
+
+          API = "https://api.github.com/repos/WahyuniPutra/kalakai/"
+          MARKER = "<!-- kalakai-preview-bot -->"
+          HEADERS = {
+              "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
+              "Accept": "application/vnd.github+json",
+              "Content-Type": "application/json",
+              "User-Agent": "kalakai-preview-links",
+          }
+
+          def api(path, method="GET", body=None):
+              req = urllib.request.Request(
+                  API + path, method=method, headers=HEADERS,
+                  data=json.dumps(body).encode() if body is not None else None,
+              )
+              with urllib.request.urlopen(req, timeout=12) as res:
+                  return json.load(res), 'rel="next"' in res.headers.get("Link", "")
+
+          def pages(path):
+              separator = "&" if "?" in path else "?"
+              for page in range(1, 21):
+                  rows, more = api(f"{path}{separator}per_page=100&page={page}")
+                  yield from rows
+                  if not more:
+                      return
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          def link(number):
+              pr, _ = api(f"pulls/{number}")
+              sha = pr["head"]["sha"]
+              if pr["state"] != "open" or pr["base"]["ref"] != "main" or not re.fullmatch(r"[a-f0-9]{40}", sha):
+                  return
+              url = f"https://pr-{number}.preview.kalakai.site/"
+              try:
+                  request = urllib.request.Request(url, method="HEAD")
+                  with urllib.request.build_opener(NoRedirect()).open(request, timeout=6) as res:
+                      reported = res.headers.get("X-Kalakai-Revision", "")
+                      ready = res.status == 200 and reported == sha
+              except (OSError, urllib.error.URLError):
+                  ready = False
+              state = f"Siap · commit `{sha[:7]}`" if ready else f"Menunggu build commit `{sha[:7]}`. Jika ada demo sebelumnya, tautan masih membuka versi terakhir yang berhasil."
+              body = f"{MARKER}\n### Demo Kalakai\n\n[Buka demo PR #{number}]({url})\n\n{state}\n\nDemo memakai data contoh. Situs live hanya di-deploy setelah merge ke `main`."
+              comments = [c for c in pages(f"issues/{number}/comments")
+                          if c["user"]["login"] == "github-actions[bot]" and c["body"].startswith(MARKER)]
+              if not comments:
+                  api(f"issues/{number}/comments", "POST", {"body": body})
+              elif comments[0]["body"] != body:
+                  api(f"issues/comments/{int(comments[0]['id'])}", "PATCH", {"body": body})
+
+          with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as source:
+              event = json.load(source)
+          numbers = ([int(event["number"])] if "pull_request" in event
+                     else [int(p["number"]) for p in pages("pulls?state=open&base=main")])
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+              list(pool.map(link, numbers))
+          PY
