@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 
-export const sessionCookie = "kalakai_session";
+const secureSession = process.env.NODE_ENV === "production";
+export const sessionCookie = secureSession ? "__Host-kalakai_session" : "kalakai_session";
+export const sessionCookieOptions = {
+  httpOnly: true,
+  secure: secureSession,
+  sameSite: "lax",
+  path: "/",
+} as const;
 export const backendApiUrl = (process.env.KALAKAI_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 
 export async function authenticate(request: Request, endpoint: "login" | "register") {
@@ -23,10 +30,7 @@ export async function authenticate(request: Request, endpoint: "login" | "regist
 
     const response = NextResponse.json({ user: data.user }, { status: upstream.status });
     response.cookies.set(sessionCookie, data.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
+      ...sessionCookieOptions,
       maxAge: 60 * 60 * 24 * 30,
     });
     return response;
