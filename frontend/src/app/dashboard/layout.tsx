@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { backendApiUrl, sessionCookie } from "@/lib/auth-proxy";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
   const token = (await cookies()).get(sessionCookie)?.value;

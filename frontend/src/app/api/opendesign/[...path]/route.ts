@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { backendApiUrl, sessionCookie } from "@/lib/auth-proxy";
+import { readableColor } from "@/lib/template-colors";
 import { collectFields, fillPages } from "../../../../../opendesign/src/server/fields";
 
 type Page = { id: string; design_id: string; title: string; canvas_json: string; sort_order: number; created_at: string };
@@ -57,11 +58,12 @@ const templateStyles: InvitationTemplate[] = [
 ];
 
 function templateJson(template: InvitationTemplate, event: EventData) {
-  const { background, accent, motif } = template;
+  const { background, motif } = template;
+  const accent = readableColor(template.accent, [background]);
   const theme = event.theme_config ?? {};
   const couple = [event.groom_name, event.bride_name].filter(Boolean).join(" & ") || "Nama & Pasangan";
   const date = event.event_date ? new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(event.event_date)) : "Tanggal acara";
-  const foreground = ["#f4eee3", "#efe5d2", "#f0dfc8", "#f2eedf", "#faf9f5", "#eeedeb", "#e9eee8", "#f1f1ed", "#fffefa", "#f5f1e7", "#eee9f2", "#f0e2d7", "#faf5e9"].includes(background) ? "#34312d" : "#fffaf0";
+  const foreground = readableColor("#fffaf0", [background]);
   const frame = template.style === "minimal" ? [] : [
     { type: "rect", left: 68, top: 68, width: 944, height: 1784, fill: "rgba(0,0,0,0)", stroke: accent, strokeWidth: 2 },
     { type: "rect", left: 82, top: 82, width: 916, height: 1756, fill: "rgba(0,0,0,0)", stroke: accent, strokeWidth: 1, opacity: 0.55 },
@@ -110,27 +112,28 @@ function templatePages(template: InvitationTemplate, event: EventData): Template
   const location = event.location_name || "Nama tempat";
   const address = event.location_address || "Alamat lengkap acara";
   const background = template.background;
-  const foreground = ["#f4eee3", "#efe5d2", "#f0dfc8", "#f2eedf", "#faf9f5", "#eeedeb", "#e9eee8", "#f1f1ed", "#fffefa", "#f5f1e7", "#eee9f2", "#f0e2d7", "#faf5e9"].includes(background) ? "#34312d" : "#fffaf0";
+  const foreground = readableColor("#fffaf0", [background]);
+  const accent = readableColor(template.accent, [background]);
   const page = (objects: Record<string, unknown>[]) => JSON.stringify({ version: "6.0.0", objects: [...shell, ...objects] });
   const heading = (text: string, top = 330) => ({ type: "textbox", left: 110, top, width: 860, text, fontSize: 58, fontFamily: "Playfair Display", fill: foreground, textAlign: "center" });
-  const smallLabel = (text: string, top: number) => ({ type: "textbox", left: 120, top, width: 840, text, fontSize: 19, fontFamily: "Montserrat", charSpacing: 220, fill: template.accent, textAlign: "center" });
+  const smallLabel = (text: string, top: number) => ({ type: "textbox", left: 120, top, width: 840, text, fontSize: 19, fontFamily: "Montserrat", charSpacing: 220, fill: accent, textAlign: "center" });
   const storiesContent = [
     smallLabel("CERITA KAMI", 340),
     heading("Dua hati, satu perjalanan", 410),
-    { type: "textbox", left: 140, top: 610, width: 800, text: couple, fieldName: "couple_names", fontSize: 39, fontFamily: "Playfair Display", fill: template.accent, textAlign: "center" },
+    { type: "textbox", left: 140, top: 610, width: 800, text: couple, fieldName: "couple_names", fontSize: 39, fontFamily: "Playfair Display", fill: accent, textAlign: "center" },
     { type: "textbox", left: 145, top: 790, width: 790, text: quote, fieldName: "quote", fontSize: 27, fontFamily: "Lora", fill: foreground, textAlign: "center", lineHeight: 1.45 },
-    { type: "textbox", left: 145, top: 965, width: 790, text: quoteSource, fieldName: "quote_source", fontSize: 17, fontFamily: "Montserrat", fill: template.accent, textAlign: "center" },
+    { type: "textbox", left: 145, top: 965, width: 790, text: quoteSource, fieldName: "quote_source", fontSize: 17, fontFamily: "Montserrat", fill: accent, textAlign: "center" },
     { type: "textbox", left: 155, top: 1150, width: 770, text: stories, fieldName: "love_story", fontSize: 22, fontFamily: "Lora", fill: foreground, textAlign: "center", lineHeight: 1.6 },
-    { type: "textbox", left: 140, top: 1630, width: 800, text: "Dengan penuh syukur, kami mengundang Anda menjadi bagian dari hari bahagia kami.", fontSize: 20, fontFamily: "Lora", fill: template.accent, textAlign: "center", lineHeight: 1.45 },
+    { type: "textbox", left: 140, top: 1630, width: 800, text: "Dengan penuh syukur, kami mengundang Anda menjadi bagian dari hari bahagia kami.", fontSize: 20, fontFamily: "Lora", fill: accent, textAlign: "center", lineHeight: 1.45 },
   ];
   const detailContent = [
     smallLabel("HARI ISTIMEWA", 340),
     heading("Waktu & tempat", 410),
     { type: "textbox", left: 120, top: 650, width: 840, text: date, fieldName: "event_date", fontSize: 34, fontFamily: "Playfair Display", fill: foreground, textAlign: "center" },
-    { type: "textbox", left: 145, top: 840, width: 790, text: location, fieldName: "location_name", fontSize: 32, fontFamily: "Montserrat", fontWeight: "600", fill: template.accent, textAlign: "center" },
+    { type: "textbox", left: 145, top: 840, width: 790, text: location, fieldName: "location_name", fontSize: 32, fontFamily: "Montserrat", fontWeight: "600", fill: accent, textAlign: "center" },
     { type: "textbox", left: 145, top: 920, width: 790, text: address, fieldName: "location_address", fontSize: 22, fontFamily: "Montserrat", fill: foreground, textAlign: "center", lineHeight: 1.5 },
     { type: "rect", left: 280, top: 1120, width: 520, height: 104, fill: "rgba(0,0,0,0)", stroke: template.accent, strokeWidth: 2, rx: 20, ry: 20 },
-    { type: "textbox", left: 300, top: 1150, width: 480, text: event.map_url ? "BUKA PETA LOKASI" : "TAUTAN PETA LOKASI", fontSize: 20, fontFamily: "Montserrat", fontWeight: "600", fill: template.accent, textAlign: "center" },
+    { type: "textbox", left: 300, top: 1150, width: 480, text: event.map_url ? "BUKA PETA LOKASI" : "TAUTAN PETA LOKASI", fontSize: 20, fontFamily: "Montserrat", fontWeight: "600", fill: accent, textAlign: "center" },
     { type: "textbox", left: 150, top: 1450, width: 780, text: "Kehadiran dan doa restu Anda merupakan kebahagiaan bagi kami.", fontSize: 22, fontFamily: "Lora", fill: foreground, textAlign: "center", lineHeight: 1.5 },
   ];
   const imageUrl = typeof theme.hero_image_url === "string" ? theme.hero_image_url : "";
@@ -143,14 +146,14 @@ function templatePages(template: InvitationTemplate, event: EventData): Template
       { type: "image", left: 560, top: 1150, width: 330, height: 300, src: imageUrl, fieldName: "hero_image_url", scaleX: 1, scaleY: 1 },
     ] : template.photo ? [
       { type: "rect", left: 190, top: 660, width: 700, height: 450, fill: `${template.accent}20`, stroke: template.accent, strokeWidth: 2, rx: 20, ry: 20 },
-      { type: "textbox", left: 220, top: 850, width: 640, text: "TAMBAHKAN FOTO KENANGAN", fontSize: 20, fontFamily: "Montserrat", fill: template.accent, textAlign: "center" },
+      { type: "textbox", left: 220, top: 850, width: 640, text: "TAMBAHKAN FOTO KENANGAN", fontSize: 20, fontFamily: "Montserrat", fill: accent, textAlign: "center" },
       { type: "rect", left: 190, top: 1150, width: 330, height: 300, fill: `${template.accent}14`, stroke: template.accent, strokeWidth: 1, rx: 16, ry: 16 },
       { type: "rect", left: 560, top: 1150, width: 330, height: 300, fill: `${template.accent}14`, stroke: template.accent, strokeWidth: 1, rx: 16, ry: 16 },
     ] : [
       { type: "textbox", left: 160, top: 720, width: 760, text: quote, fieldName: "quote", fontSize: 28, fontFamily: "Lora", fill: foreground, textAlign: "center", lineHeight: 1.5 },
       { type: "textbox", left: 160, top: 980, width: 760, text: stories, fieldName: "love_story", fontSize: 22, fontFamily: "Lora", fill: foreground, textAlign: "center", lineHeight: 1.6 },
     ]),
-    { type: "textbox", left: 140, top: 1570, width: 800, text: "Mohon konfirmasi kehadiran dan tinggalkan ucapan terbaik untuk kami.", fontSize: 20, fontFamily: "Lora", fill: template.accent, textAlign: "center", lineHeight: 1.5 },
+    { type: "textbox", left: 140, top: 1570, width: 800, text: "Mohon konfirmasi kehadiran dan tinggalkan ucapan terbaik untuk kami.", fontSize: 20, fontFamily: "Lora", fill: accent, textAlign: "center", lineHeight: 1.5 },
     { type: "textbox", left: 140, top: 1690, width: 800, text: `${couple} · Terima kasih atas doa dan kasih Anda`, fieldName: "couple_names", fontSize: 18, fontFamily: "Montserrat", fill: foreground, textAlign: "center" },
   ];
   return [

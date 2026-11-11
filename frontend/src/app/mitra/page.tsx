@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import PartnerCatalog, { type CatalogPartner } from "./PartnerCatalog";
+import { publicMetadata } from "@/lib/seo";
 
 const backendApiUrl = (process.env.KALAKAI_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 
-export const metadata: Metadata = {
-  title: "Katalog Mitra — Kalakai",
-  description: "Temukan mitra layanan acara dari Kerabat Kalakai.",
-};
+export const metadata: Metadata = publicMetadata("Katalog Mitra Layanan Acara — Kalakai", "Temukan percetakan dan penyedia layanan acara dari Kerabat Kalakai. Lihat profil usaha, lokasi, katalog, dan harga layanan mitra.", "/mitra");
 
 async function getPartners(): Promise<CatalogPartner[]> {
   try {
