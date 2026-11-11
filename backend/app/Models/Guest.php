@@ -16,7 +16,10 @@ class Guest extends Model
     {
         return [
             'checked_in_at' => 'datetime',
+            'souvenir_claimed_at' => 'datetime',
+            'is_vip' => 'boolean',
             'pax' => 'integer',
+            'souvenir_count' => 'integer',
         ];
     }
 

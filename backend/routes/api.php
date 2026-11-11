@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\AdminEventPackageController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PartnerVerificationController;
 use App\Http\Controllers\Api\UserEventController;
+use App\Http\Controllers\Api\UserGuestController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ServiceRequestController;
 use App\Models\PartnerProfile;
@@ -34,6 +36,9 @@ Route::prefix('events')->group(function () {
     Route::post('/{slug}/rsvp', [EventApiController::class, 'storeRsvp']);
     Route::post('/{slug}/checkin', [EventApiController::class, 'checkin']);
     Route::get('/{slug}/guestbook', [EventApiController::class, 'guestbook']);
+    Route::get('/{slug}/live-feed', [EventApiController::class, 'liveFeed']);
+    Route::post('/{slug}/guests/{guestId}/souvenir', [EventApiController::class, 'toggleSouvenir']);
+    Route::post('/{slug}/guests/{guestId}/envelope', [EventApiController::class, 'updateEnvelope']);
 });
 
 Route::get('/user', function (Request $request) {
@@ -56,6 +61,19 @@ Route::middleware('auth:sanctum')->prefix('user/events')->group(function () {
     Route::match(['get', 'post'], '/{eventId}/fonts', [UserEventController::class, 'fonts']);
     Route::get('/{eventId}', [UserEventController::class, 'show']);
     Route::patch('/{eventId}', [UserEventController::class, 'update']);
+
+    // Guest Management
+    Route::get('/{eventId}/guests', [UserGuestController::class, 'index']);
+    Route::post('/{eventId}/guests', [UserGuestController::class, 'store']);
+    Route::post('/{eventId}/guests/import', [UserGuestController::class, 'import']);
+    Route::patch('/{eventId}/guests/{guestId}', [UserGuestController::class, 'update']);
+    Route::delete('/{eventId}/guests/{guestId}', [UserGuestController::class, 'destroy']);
+});
+
+Route::middleware('auth:sanctum')->prefix('payments')->group(function () {
+    Route::post('/events/{eventId}/checkout', [PaymentController::class, 'checkout']);
+    Route::get('/transactions/{invoiceNumber}', [PaymentController::class, 'status']);
+    Route::post('/transactions/{invoiceNumber}/simulate', [PaymentController::class, 'simulate']);
 });
 Route::get('/public-assets/{path}', [UserEventController::class, 'publicAsset'])->where('path', '.*');
 Route::patch('/admin/partners/{partnerProfile}/status', [PartnerVerificationController::class, 'update'])->middleware('auth:sanctum');

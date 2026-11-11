@@ -2,12 +2,18 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CalendarDays, Copy, ExternalLink, MapPin, Search, UsersRound } from "lucide-react";
+import { CalendarDays, Copy, ExternalLink, MapPin, Search, UsersRound, QrCode, MonitorPlay, Crown } from "lucide-react";
 import { siteUrl } from "@/lib/seo";
 
 export type WorkspaceEvent = {
-  id: number; title: string; slug: string; event_date: string | null; location_name: string | null;
-  guests_count: number; is_published: boolean;
+  id: number;
+  title: string;
+  slug: string;
+  event_date: string | null;
+  location_name: string | null;
+  guests_count: number;
+  is_published: boolean;
+  package_code?: "free" | "bahagia" | "resepsi";
 };
 const calendar = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" });
 
@@ -48,13 +54,48 @@ export default function EventDirectory({ events }: { events: WorkspaceEvent[] })
     {filtered.length ? <div className="work-list">{filtered.map((event) => {
       const date = Date.parse(event.event_date ?? "");
       return <article className="work-event" key={event.id}>
-        <div className="work-event-main"><div className="work-event-title"><h2>{event.title}</h2><span className={`work-status ${event.is_published ? "work-status-good" : ""}`}>{event.is_published ? "Terbit" : "Draf"}</span></div>
-          <div className="work-event-meta"><span><CalendarDays size={15} />{Number.isNaN(date) ? "Tanggal belum diatur" : calendar.format(date)}</span><span><MapPin size={15} />{event.location_name || "Lokasi belum diatur"}</span><span><UsersRound size={15} />{event.guests_count} tamu</span></div>
+        <div className="work-event-main">
+          <div className="work-event-title">
+            <h2>{event.title}</h2>
+            <div className="flex items-center gap-2">
+              {event.package_code === "resepsi" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                  <Crown size={12} /> Paket Resepsi (Pro)
+                </span>
+              ) : event.package_code === "bahagia" ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/15 text-rose-600 border border-rose-500/30">
+                  Paket Bahagia
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-600 border border-stone-200">
+                  Paket Free
+                </span>
+              )}
+              <span className={`work-status ${event.is_published ? "work-status-good" : ""}`}>{event.is_published ? "Terbit" : "Draf"}</span>
+            </div>
+          </div>
+          <div className="work-event-meta">
+            <span><CalendarDays size={15} />{Number.isNaN(date) ? "Tanggal belum diatur" : calendar.format(date)}</span>
+            <span><MapPin size={15} />{event.location_name || "Lokasi belum diatur"}</span>
+            <span><UsersRound size={15} />{event.guests_count} tamu</span>
+          </div>
         </div>
         <div className="work-actions">
+          <Link className="work-secondary" href={`/dashboard/undangan/${event.id}/tamu`}>
+            <UsersRound size={15} /> Kelola Tamu ({event.guests_count})
+          </Link>
+          <Link className="work-secondary" href={`/${event.slug}/resepsionis`} target="_blank">
+            <QrCode size={15} /> Meja Resepsi
+          </Link>
+          <Link className="work-secondary" href={`/${event.slug}/live-display`} target="_blank">
+            <MonitorPlay size={15} /> Layar Proyektor
+          </Link>
           <Link className="work-secondary" href={`/dashboard/undangan/${event.id}`}>Edit undangan</Link>
           <Link className="work-secondary" href={`/dashboard/layanan?acara=${event.id}#ajukan`}>Ajukan layanan</Link>
-          {event.is_published && <><Link className="work-secondary" href={`/${event.slug}`}><ExternalLink size={15} /> Buka</Link><button type="button" className="work-secondary" onClick={() => void copy(event)}><Copy size={15} /> Salin tautan</button></>}
+          {event.is_published && <>
+            <Link className="work-secondary" href={`/${event.slug}`} target="_blank"><ExternalLink size={15} /> Buka Web</Link>
+            <button type="button" className="work-secondary" onClick={() => void copy(event)}><Copy size={15} /> Salin tautan</button>
+          </>}
         </div>
       </article>;
     })}</div> : <div className="work-empty"><CalendarDays size={26} /><h2>{events.length ? "Tidak ada acara yang cocok" : "Belum ada acara"}</h2><p>{events.length ? "Ubah kata pencarian atau filter status." : "Buat undangan untuk mulai menyiapkan acara."}</p>{!events.length && <Link className="work-primary" href="/dashboard/undangan/new">Buat undangan pertama</Link>}</div>}

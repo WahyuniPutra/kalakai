@@ -62,7 +62,12 @@ class EventApiController extends Controller
                 'guest' => $guest ?? [
                     'name' => ucwords(str_replace('-', ' ', $guestSlug)),
                     'category' => 'Tamu Terhormat',
+                    'is_vip' => false,
+                    'table_number' => 'Reguler',
                     'pax' => 2,
+                    'souvenir_count' => 1,
+                    'souvenir_claimed_at' => null,
+                    'envelope_number' => null,
                     'qr_code' => 'KLK-' . strtoupper(substr(md5($guestSlug), 0, 8)),
                     'status' => 'pending',
                 ],
@@ -84,7 +89,6 @@ class EventApiController extends Controller
             'guest_id' => 'nullable|exists:guests,id',
         ]);
 
-        // If guest_id provided or guest matches by name, update status
         if (!empty($validated['guest_id'])) {
             Guest::where('id', $validated['guest_id'])
                 ->where('event_id', $event->id)
@@ -116,6 +120,8 @@ class EventApiController extends Controller
 
         $validated = $request->validate([
             'qr_code' => 'required|string',
+            'claim_souvenir' => 'nullable|boolean',
+            'envelope_number' => 'nullable|string|max:50',
         ]);
 
         $guest = Guest::where('event_id', $event->id)
@@ -130,19 +136,124 @@ class EventApiController extends Controller
         }
 
         $isAlreadyCheckedIn = !empty($guest->checked_in_at);
+        $souvenirAlreadyClaimed = !empty($guest->souvenir_claimed_at);
 
-        $guest->update([
+        $updateData = [
             'status' => 'hadir',
             'checked_in_at' => $guest->checked_in_at ?? now(),
-        ]);
+        ];
+
+        // Claim souvenir if requested
+        if (!empty($validated['claim_souvenir']) && !$souvenirAlreadyClaimed) {
+            $updateData['souvenir_claimed_at'] = now();
+        }
+
+        // Tag envelope number if provided
+        if (!empty($validated['envelope_number'])) {
+            $updateData['envelope_number'] = trim($validated['envelope_number']);
+        }
+
+        $guest->update($updateData);
 
         return response()->json([
             'status' => 'success',
             'already_checked_in' => $isAlreadyCheckedIn,
+            'souvenir_already_claimed' => $souvenirAlreadyClaimed,
             'message' => $isAlreadyCheckedIn
-                ? "Tamu {$guest->name} sebelumnya sudah melakukan check-in pada {$guest->checked_in_at->format('H:i')}"
+                ? "Tamu {$guest->name} sebelumnya sudah check-in pada {$guest->checked_in_at->format('H:i')} WIB"
                 : "Check-in Berhasil! Selamat datang {$guest->name}",
             'data' => $guest,
+        ]);
+    }
+
+    /**
+     * Toggle souvenir claim status
+     */
+    public function toggleSouvenir(Request $request, string $slug, int $guestId): JsonResponse
+    {
+        $event = Event::where('slug', $slug)->firstOrFail();
+        $guest = Guest::where('event_id', $event->id)->where('id', $guestId)->firstOrFail();
+
+        $action = $request->input('action', 'claim');
+
+        if ($action === 'revoke') {
+            $guest->update(['souvenir_claimed_at' => null]);
+            $message = "Status souvenir untuk {$guest->name} berhasil dibatalkan.";
+        } else {
+            $guest->update(['souvenir_claimed_at' => now()]);
+            $message = "Souvenir ({$guest->souvenir_count} pax) berhasil diserahkan kepada {$guest->name}.";
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $message,
+            'data' => $guest,
+        ]);
+    }
+
+    /**
+     * Update physical envelope number
+     */
+    public function updateEnvelope(Request $request, string $slug, int $guestId): JsonResponse
+    {
+        $event = Event::where('slug', $slug)->firstOrFail();
+        $guest = Guest::where('event_id', $event->id)->where('id', $guestId)->firstOrFail();
+
+        $validated = $request->validate([
+            'envelope_number' => 'nullable|string|max:50',
+        ]);
+
+        $guest->update([
+            'envelope_number' => $validated['envelope_number'] ? trim($validated['envelope_number']) : null,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Nomor amplop fisik berhasil diperbarui.',
+            'data' => $guest,
+        ]);
+    }
+
+    /**
+     * Live display data stream for projector / welcome TV
+     */
+    public function liveFeed(string $slug): JsonResponse
+    {
+        $event = Event::where('slug', $slug)->firstOrFail();
+
+        $recentCheckins = Guest::where('event_id', $event->id)
+            ->whereNotNull('checked_in_at')
+            ->orderBy('checked_in_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        $recentWishes = Wish::where('event_id', $event->id)
+            ->where('is_approved', true)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        $stats = [
+            'total_guests' => Guest::where('event_id', $event->id)->count(),
+            'total_checked_in' => Guest::where('event_id', $event->id)->whereNotNull('checked_in_at')->count(),
+            'total_pax_attended' => (int) Guest::where('event_id', $event->id)->whereNotNull('checked_in_at')->sum('pax'),
+        ];
+
+        return response()->json([
+            'status' => 'success',
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'slug' => $event->slug,
+                'groom_name' => $event->groom_name,
+                'bride_name' => $event->bride_name,
+                'event_date' => $event->event_date,
+                'location_name' => $event->location_name,
+                'theme_config' => $event->theme_config,
+            ],
+            'stats' => $stats,
+            'recent_checkins' => $recentCheckins,
+            'recent_wishes' => $recentWishes,
         ]);
     }
 
@@ -164,15 +275,22 @@ class EventApiController extends Controller
             'total_tidak_hadir' => $guests->where('status', 'tidak_hadir')->count(),
             'total_pending' => $guests->where('status', 'pending')->count(),
             'total_checked_in' => $guests->whereNotNull('checked_in_at')->count(),
+            'total_souvenirs_claimed' => $guests->whereNotNull('souvenir_claimed_at')->count(),
+            'total_souvenirs_target' => (int) $guests->sum('souvenir_count'),
+            'total_vip' => $guests->where('is_vip', true)->count(),
+            'total_pax_attended' => (int) $guests->whereNotNull('checked_in_at')->sum('pax'),
         ];
 
         return response()->json([
             'status' => 'success',
             'event' => [
                 'id' => $event->id,
+                'user_id' => $event->user_id,
                 'title' => $event->title,
                 'slug' => $event->slug,
+                'package_code' => $event->package_code,
                 'event_date' => $event->event_date,
+                'location_name' => $event->location_name,
             ],
             'stats' => $stats,
             'guests' => $guests,

@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, Check, Copy, Eye, Music2, Save, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, Copy, Eye, Music2, Save, Sparkles, Users, Crown } from "lucide-react";
+import UpgradePackageModal from "./UpgradePackageModal";
+import OpenPageEditor from "@/lib/openpage/editor";
+import { createDefaultOpenPageConfig, type OpenPageConfig } from "@/lib/openpage/schema";
 import DashboardShell, { type DashboardUser } from "./DashboardShell";
-import type { CanvasElement } from "./InvitationCanvasTypes";
-import InvitationHTMLBuilder from "./InvitationHTMLBuilder";
-import { createDefaultInvitationWebDesign, normalizeInvitationWebDesign, type InvitationWebDesign } from "../invitation-web-types";
 
 type OpenDesignData = { id: string; name: string; canvas_json: string; width: number; height: number; thumbnail_url?: string | null; pages?: { id: string; title: string; canvas_json: string; sort_order: number }[]; brand_kits?: unknown[]; fonts?: unknown[] };
 
@@ -50,10 +50,10 @@ type Draft = {
   audio_preview_url: string;
   love_story_text: string;
   sections: { names: boolean; story: boolean; details: boolean; gifts: boolean; guestbook: boolean; spotify: boolean };
-  canvas_elements: CanvasElement[];
+  canvas_elements?: unknown[];
   open_design: OpenDesignData | null;
   page_transition: "fade" | "slide" | "flip" | "zoom";
-  web_design: InvitationWebDesign;
+  web_design?: unknown;
 };
 
 const blankDraft: Draft = {
@@ -65,7 +65,7 @@ const blankDraft: Draft = {
   canvas_elements: [],
   open_design: null,
   page_transition: "fade",
-  web_design: createDefaultInvitationWebDesign(),
+  web_design: null,
 };
 
 
@@ -98,12 +98,10 @@ function applyTemplateToWebDesign(design: OpenDesignData, current: Draft): Parti
     background = color(fullCanvas?.fill) ?? background;
     const candidates = objects.map((item) => color(item.fill)).filter((item): item is string => Boolean(item));
     accent = candidates.find((item) => item.toLowerCase() !== background.toLowerCase() && !["#ffffff", "#000000", "#f8f5ef"].includes(item.toLowerCase())) ?? accent;
-  } catch { /* Keep the existing palette if the selected template data is unavailable. */ }
-  const web_design = normalizeInvitationWebDesign(current.web_design);
+  } catch { /* Keep the existing palette */ }
   return {
     primary_color: background,
     accent_color: accent,
-    web_design: { ...web_design, sections: web_design.sections.map((section) => section.type === "hero" ? { ...section, background } : section) },
   };
 }
 
@@ -121,6 +119,10 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState(1);
   const [packageCode, setPackageCode] = useState<"free" | "bahagia" | "resepsi">("free");
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+    const [openPageConfig, setOpenPageConfig] = useState<OpenPageConfig | null>(null);
+
+
 
   useEffect(() => {
     if (["localhost", "127.0.0.1"].includes(window.location.hostname)) setSiteOrigin(window.location.origin);
@@ -136,6 +138,19 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
         if (!active) return;
         const theme = data.theme_config ?? {};
         setPackageCode(data.package_code === "bahagia" || data.package_code === "resepsi" ? data.package_code : "free");
+        setOpenPageConfig(
+          theme.openpage_config ||
+          createDefaultOpenPageConfig({
+            title: data.title,
+            groom_name: data.groom_name,
+            bride_name: data.bride_name,
+            event_date: data.event_date,
+            location_name: data.location_name,
+            location_address: data.location_address,
+            map_url: data.map_url,
+            spotify_track_id: data.spotify_track_id,
+          })
+        );
         setDraft({
           ...blankDraft,
           title: data.title,
@@ -159,10 +174,10 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
           audio_preview_url: String(theme.audio_preview_url ?? ""),
           love_story_text: Array.isArray(theme.love_story) ? theme.love_story.map((item: { year?: string; title?: string; desc?: string }) => `${item.year ?? ""} | ${item.title ?? ""} | ${item.desc ?? ""}`).join("\n") : "",
           sections: { ...blankDraft.sections, ...(theme.sections as Partial<Draft["sections"]> | undefined) },
-          canvas_elements: Array.isArray(theme.canvas_elements) ? (theme.canvas_elements as Partial<CanvasElement>[]).map((element, index) => ({ id: element.id ?? `element-${index}`, page: element.page ?? "cover", type: element.type ?? "text", text: element.text ?? "", image_url: element.image_url ?? "", x: element.x ?? 50, y: element.y ?? 50, width: element.width ?? 55, height: element.height ?? (element.type === "photo" ? 24 : 12), font_size: element.font_size ?? 20, color: element.color ?? String(theme.accent_color ?? "#dc9a9a"), rotation: element.rotation ?? 0, effect: element.effect ?? "none", frame: element.frame ?? "none", font_family: element.font_family ?? "serif", font_style: element.font_style ?? "normal", opacity: element.opacity ?? 1 })) : [],
+          canvas_elements: Array.isArray(theme.canvas_elements) ? theme.canvas_elements : [],
           open_design: (theme.open_design as { design?: OpenDesignData; brand_kits?: unknown[]; fonts?: unknown[] } | undefined)?.design ? { ...(theme.open_design as { design: OpenDesignData }).design, brand_kits: (theme.open_design as { brand_kits?: unknown[] }).brand_kits ?? [], fonts: (theme.open_design as { fonts?: unknown[] }).fonts ?? [] } : null,
           page_transition: (theme.page_transition as Draft["page_transition"]) ?? "fade",
-          web_design: normalizeInvitationWebDesign(theme.web_design),
+          web_design: theme.web_design ?? null,
         });
         setIsPublished(Boolean(data.is_published));
       })
@@ -198,6 +213,22 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
   const personalUrl = useMemo(() => `${siteOrigin}/${draft.slug || "nama-acara"}/${slugify(guestName) || "nama-tamu"}`, [siteOrigin, draft.slug, guestName]);
   const spotifyId = useMemo(() => getSpotifyId(draft.spotify_input), [draft.spotify_input]);
 
+  const currentOpenPageConfig = useMemo(() => {
+    return (
+      openPageConfig ||
+      createDefaultOpenPageConfig({
+        title: draft.title,
+        groom_name: draft.groom_name,
+        bride_name: draft.bride_name,
+        event_date: draft.event_date,
+        location_name: draft.location_name,
+        location_address: draft.location_address,
+        map_url: draft.map_url,
+        spotify_track_id: spotifyId,
+      })
+    );
+  }, [openPageConfig, draft.title, draft.groom_name, draft.bride_name, draft.event_date, draft.location_name, draft.location_address, draft.map_url, spotifyId]);
+
   function update<K extends keyof Draft>(field: K, value: Draft[K]) {
     setDraft((current) => {
       const next = { ...current, [field]: value };
@@ -228,6 +259,7 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
         font_family: draft.font_family,
         quote: draft.quote,
         quote_source: draft.quote_source,
+          openpage_config: openPageConfig || currentOpenPageConfig,
         hero_image_url: draft.hero_image_url || null,
         audio_title: draft.audio_title || null,
         audio_preview_url: draft.audio_preview_url || null,
@@ -283,6 +315,16 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
     return data.url as string;
   }
 
+  async function uploadAudioFile(file: File): Promise<string> {
+    if (!eventId) throw new Error("Simpan draf acara terlebih dahulu sebelum mengunggah audio.");
+    const form = new FormData();
+    form.append("audio", file);
+    const res = await fetch(`/api/user/events/${eventId}/assets`, { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message ?? "Gagal mengunggah audio.");
+    return data.url as string;
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void saveInvitation(isPublished);
@@ -301,12 +343,13 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
   if (loading) return <div className="invite-builder-loading">Memuat undangan…</div>;
 
   return <DashboardShell user={user} section="events">
-    <div className="invite-builder-heading"><div><p className="eyebrow"><span className="eyebrow-dot" />PEMBUAT UNDANGAN</p><h1>{eventId ? "Kustomisasi undangan" : "Mulai undangan baru"}</h1><p>Pilih dasar desain, isi detail acara, lalu sesuaikan tampilannya.</p></div><span className="invite-builder-plan">PAKET {packageCode === "free" ? "KERABAT FREE" : packageCode === "bahagia" ? "BAHAGIA" : "RESEPSI"}</span></div>
+    <div className="invite-builder-heading"><div><p className="eyebrow"><span className="eyebrow-dot" />PEMBUAT UNDANGAN</p><h1>{eventId ? "Kustomisasi undangan" : "Mulai undangan baru"}</h1><p>Pilih dasar desain, isi detail acara, lalu sesuaikan tampilannya.</p></div><div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>{eventId && <Link href={`/dashboard/undangan/${eventId}/tamu`} className="secondary-button" style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}><Users size={15} /> Kelola Tamu &amp; WhatsApp</Link>}<button type="button" onClick={() => setIsUpgradeModalOpen(true)} className="secondary-button" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", cursor: "pointer" }}><Crown size={14} style={{ color: "#f59e0b" }} /> Upgrade Paket</button>
+        <span className="invite-builder-plan">PAKET {packageCode === "free" ? "KERABAT FREE" : packageCode === "bahagia" ? "BAHAGIA" : "RESEPSI"}</span></div></div>
     <nav className="invite-builder-tabs" role="tablist" aria-label="Langkah pembuatan undangan">
       {[
         [1, "Informasi acara", "Identitas & tautan"],
         [2, "Detail acara", "Lokasi, cerita & musik"],
-        [3, "Editor desain", "Tata letak & tampilan"],
+        [3, "Editor OpenPage", "Balok responsif & tampilan"],
       ].map(([step, label, hint]) => (
         <button
           type="button"
@@ -437,29 +480,35 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
           <div className="invite-builder-section-title">
             <span>03</span>
             <div>
-              <h2>Editor desain &amp; tampilan HTML</h2>
-              <p>Atur warna, font, animasi, serta susun section dan elemen undangan. Anda dapat langsung mengedit teks atau menyeret elemen pada kanvas undangan.</p>
+              <h2>Editor Desain Undangan (OpenPage Engine)</h2>
+              <p>Susun balok konten Lego 100% responsif HP, ubah urutan, atur warna, font, foto momen, dan musik latar.</p>
             </div>
           </div>
-          <InvitationHTMLBuilder
-            value={draft.web_design}
-            onChange={(web_design) => update("web_design", web_design)}
-            title={draft.title}
-            groom={draft.groom_name}
-            bride={draft.bride_name}
-            date={draft.event_date}
-            location={draft.location_name}
-            quote={draft.quote}
-            photo={draft.hero_image_url}
-            primary={draft.primary_color}
-            accent={draft.accent_color}
-            plan={packageCode}
-            eventId={eventId}
-            onUploadImage={eventId ? uploadAssetFile : undefined}
-            onUpdateEventData={(field, val) => update(field as keyof Draft, val as any)}
-            onUpdatePrimaryColor={(c) => update("primary_color", c)}
-            onUpdateAccentColor={(c) => update("accent_color", c)}
-          />
+
+          <div style={{ width: "100%", marginTop: "1rem" }}>
+            <OpenPageEditor
+              config={currentOpenPageConfig}
+              onChange={(updated) => setOpenPageConfig(updated)}
+              event={{
+                id: eventId,
+                slug: draft.slug,
+                title: draft.title,
+                event_type: draft.event_type,
+                groom_name: draft.groom_name,
+                bride_name: draft.bride_name,
+                event_date: draft.event_date,
+                location_name: draft.location_name,
+                location_address: draft.location_address,
+                map_url: draft.map_url,
+                spotify_track_id: spotifyId,
+                gift_accounts: (openPageConfig || currentOpenPageConfig)?.blocks?.find((b) => b.type === "gifts")?.content?.accounts || [],
+              }}
+              onSave={() => void saveInvitation(isPublished)}
+              saving={saving}
+              onUploadImage={eventId ? uploadAssetFile : undefined}
+              onUploadAudio={eventId ? uploadAudioFile : undefined}
+            />
+          </div>
         </section>
 
         {error && <p className="invite-builder-error" role="alert">{error}</p>}
@@ -469,5 +518,6 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
 
       <aside className="invite-builder-preview-column"><div className="invite-preview-label"><Eye size={16} />TAUTAN UNDANGAN</div><div className="builder-url-card"><span>URL UNDANGAN</span><strong>{eventUrl}</strong><small>{isPublished ? "Tautan publik aktif" : "Tautan tersedia setelah diterbitkan"}</small><label>Pratinjau nama tamu<input value={guestName} onChange={(event) => setGuestName(event.target.value)} placeholder="Contoh: Budi Santoso" /></label><code>{personalUrl.replace(/^https?:\/\//, "")}</code><button type="button" disabled={!isPublished} onClick={() => void copyPersonalLink()}><Copy size={15} />{copiedLink ? "Tautan disalin" : "Salin tautan personal"}</button></div></aside>
     </div>
+  <UpgradePackageModal isOpen={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} eventId={eventId} currentPackage={packageCode} onUpgraded={(pkg) => setPackageCode(pkg)} />
   </DashboardShell>;
 }

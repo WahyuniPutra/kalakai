@@ -62,10 +62,17 @@ class UserEventController extends Controller
         $this->authorizeUserRole($request);
         $request->user()->events()->findOrFail($eventId);
         $validated = $request->validate([
-            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,mp3,wav,ogg,m4a', 'max:15360'],
+            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg,m4a', 'max:15360'],
+            'file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,mp3,wav,ogg,m4a', 'max:15360'],
         ]);
 
-        $path = $validated['image']->store("undangan-assets/{$request->user()->id}", 'public');
+        $uploaded = $request->file('audio') ?? $request->file('file') ?? $request->file('image');
+        if (!$uploaded) {
+            return response()->json(['message' => 'Berkas tidak ditemukan atau format tidak didukung.'], 422);
+        }
+
+        $path = $uploaded->store("undangan-assets/{$request->user()->id}", 'public');
 
         return response()->json(['path' => $path], 201);
     }
