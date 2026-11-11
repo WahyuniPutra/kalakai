@@ -10,6 +10,24 @@ use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
+    public function updateCatalog(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->role === 'partner' && $user->partnerProfile?->status === 'active', 403);
+        $data = $request->validate([
+            'catalog' => ['present', 'array', 'list', 'max:30'],
+            'catalog.*' => ['required', 'array:name,price_from,unit,description,photo_url'],
+            'catalog.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
+            'catalog.*.price_from' => ['required', 'integer', 'between:0,9999999999'],
+            'catalog.*.unit' => ['required', 'string', 'max:32'],
+            'catalog.*.description' => ['nullable', 'string', 'max:500'],
+            'catalog.*.photo_url' => ['nullable', 'url:http,https', 'max:2048'],
+        ]);
+        $user->partnerProfile->update(['catalog' => $data['catalog']]);
+
+        return response()->json($user->partnerProfile->fresh());
+    }
+
     public function show(Request $request): JsonResponse
     {
         abort_unless(in_array($request->user()->role, ['user', 'partner'], true), 403);

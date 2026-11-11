@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, CalendarDays, Check, Copy, Eye, Heart, Music2, Save, Sparkles } from "lucide-react";
-import DashboardShell, { type DashboardNavItem, type DashboardUser } from "./DashboardShell";
+import { ArrowLeft, ArrowUpRight, Check, Copy, Eye, Music2, Save, Sparkles } from "lucide-react";
+import DashboardShell, { type DashboardUser } from "./DashboardShell";
 import type { CanvasElement } from "./InvitationCanvasTypes";
 import InvitationHTMLBuilder from "./InvitationHTMLBuilder";
 import { createDefaultInvitationWebDesign, normalizeInvitationWebDesign, type InvitationWebDesign } from "../invitation-web-types";
@@ -68,11 +68,6 @@ const blankDraft: Draft = {
   web_design: createDefaultInvitationWebDesign(),
 };
 
-const builderNav: DashboardNavItem[] = [
-  { label: "Ringkasan", href: "/dashboard", icon: Heart },
-  { label: "Acara saya", href: "/dashboard#acara", icon: CalendarDays, active: true },
-  { label: "Permintaan layanan", href: "/dashboard#layanan", icon: Music2 },
-];
 
 function toLocalDate(value: string | null) {
   if (!value) return "";
@@ -305,7 +300,7 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
 
   if (loading) return <div className="invite-builder-loading">Memuat undangan…</div>;
 
-  return <DashboardShell user={user} nav={builderNav}>
+  return <DashboardShell user={user} section="events">
     <div className="invite-builder-heading"><div><p className="eyebrow"><span className="eyebrow-dot" />PEMBUAT UNDANGAN</p><h1>{eventId ? "Kustomisasi undangan" : "Mulai undangan baru"}</h1><p>Pilih dasar desain, isi detail acara, lalu sesuaikan tampilannya.</p></div><span className="invite-builder-plan">PAKET {packageCode === "free" ? "KERABAT FREE" : packageCode === "bahagia" ? "BAHAGIA" : "RESEPSI"}</span></div>
     <nav className="invite-builder-tabs" role="tablist" aria-label="Langkah pembuatan undangan">
       {[

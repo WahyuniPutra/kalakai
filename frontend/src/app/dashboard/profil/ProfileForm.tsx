@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Check, ClipboardList, LayoutDashboard, Save, Store } from "lucide-react";
+import { Check, Save } from "lucide-react";
 import DashboardShell, { type DashboardUser } from "../DashboardShell";
 
 type Partner = {
@@ -28,11 +28,6 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
   const [savedUser, setSavedUser] = useState<DashboardUser>(profile);
   const isPartner = profile.role === "partner";
   const emailChanged = values.email !== savedUser.email;
-  const nav = [
-    { label: "Ringkasan", href: "/dashboard", icon: LayoutDashboard },
-    { label: isPartner ? "Permintaan masuk" : "Acara saya", href: isPartner ? "/dashboard#permintaan" : "/dashboard#acara", icon: isPartner ? ClipboardList : CalendarDays },
-    { label: isPartner ? "Katalog layanan" : "Permintaan layanan", href: isPartner ? "/dashboard#katalog" : "/dashboard#layanan", icon: isPartner ? Store : ClipboardList },
-  ];
 
   function update(field: keyof typeof values, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -71,7 +66,7 @@ export default function ProfileForm({ profile }: { profile: Profile }) {
     return fieldErrors[field]?.[0] ? <small className="profile-field-error" id={`error-${field}`}>{fieldErrors[field][0]}</small> : null;
   }
 
-  return <DashboardShell user={savedUser} nav={nav} profileActive>
+  return <DashboardShell user={savedUser} section="profile">
     <div className="profile-heading"><p className="eyebrow">PENGATURAN AKUN</p><h1>{isPartner ? "Profil akun & usaha" : "Profil saya"}</h1><p>Perbarui informasi agar akun dan komunikasi acara Anda tetap sesuai.</p></div>
     <form className="profile-form" onSubmit={submit}>
       <section className="dashboard-panel profile-panel" aria-labelledby="profile-account">
