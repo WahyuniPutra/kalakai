@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { publicMetadata, siteDescription, siteUrl } from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,17 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://kalakai.site"),
-  title: "Kalakai — Ruang Acara Digital",
-  description: "Kelola undangan digital, tamu, RSVP, dan check-in QR acara Anda bersama Kalakai.",
-  openGraph: {
-    title: "Kalakai — Ruang Acara Digital",
-    description: "Kelola undangan digital, tamu, RSVP, dan check-in QR acara Anda bersama Kalakai.",
-    url: "https://kalakai.site",
-    siteName: "Kalakai",
-    locale: "id_ID",
-    type: "website",
-  },
+  ...publicMetadata("Kalakai — Undangan Digital & Manajemen Acara", siteDescription, "/"),
+  metadataBase: new URL(siteUrl),
+  alternates: undefined,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, Copy, EyeOff, GripVertical, ImagePlus, Trash2 } from "lucide-react";
+import { contrastRatio, mixColor, readableColor } from "@/lib/template-colors";
 import {
   fontStack, googleFonts, googleFontsHref, invitationSectionLabels, elementLabels, isDarkColor,
   type BurstEffect, type ElementAction, type InvitationElement, type InvitationElementType, type InvitationSectionType,
@@ -124,7 +125,7 @@ function BackgroundFx({ type }: { type: InvitationWebSection["effect"] }) {
 function TypeText({ text, active, speed }: { text: string; active: boolean; speed: number }) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (!active) { setCount(0); return; }
+    if (!active) return;
     let current = 0;
     const timer = window.setInterval(() => { current += 1; setCount(current); if (current >= text.length) window.clearInterval(timer); }, speed);
     return () => window.clearInterval(timer);
@@ -254,21 +255,42 @@ export default function InvitationWebRenderer({ design, event, guestName, primar
 
   const resolvedReveal = (section: InvitationWebSection) => section.reveal === "inherit" ? transitionToReveal[design.transition] : section.reveal;
 
+  function sectionPalette(section: InvitationWebSection) {
+    let backgrounds = [section.background, section.background2 || section.background];
+    let scrim = false;
+    if (section.backgroundImage) {
+      // A dark overlay bounds the lightest possible image behind the text.
+      backgrounds = ["#000000", mixColor("#ffffff", "#000000", Math.max(0.6, section.overlay / 100))];
+    } else {
+      const text = readableColor(section.textColor || "#fffaf2", backgrounds);
+      scrim = backgrounds.some((background) => contrastRatio(text, background) < 4.5);
+      if (scrim) backgrounds = backgrounds.map((background) => mixColor(background, "#000000", 0.6));
+    }
+    const dark = isDarkColor(backgrounds[0]);
+    if (section.layout === "cards") backgrounds = backgrounds.map((background) => mixColor(background, "#ffffff", dark ? 0.08 : 0.72));
+    const text = readableColor(section.textColor || (dark ? "#fffaf2" : "#243b31"), backgrounds);
+    const sectionAccent = readableColor(accent, backgrounds);
+    return { backgrounds, scrim, dark, text, accent: sectionAccent, buttonText: readableColor("#ffffff", [sectionAccent]) };
+  }
+
   function sectionStyle(section: InvitationWebSection): CSSProperties {
+    const palette = sectionPalette(section);
     const layers: string[] = [];
     if (section.backgroundImage) {
-      const shade = section.overlay / 100;
-      layers.push(`linear-gradient(rgba(10,14,12,${shade}), rgba(10,14,12,${shade}))`, `url("${section.backgroundImage}")`);
+      const shade = Math.max(0.6, section.overlay / 100);
+      layers.push(`linear-gradient(rgba(0,0,0,${shade}), rgba(0,0,0,${shade}))`, `url("${section.backgroundImage}")`);
     }
+    if (palette.scrim) layers.push("linear-gradient(#00000099, #00000099)");
     if (section.background2) layers.push(`linear-gradient(${section.gradientAngle}deg, ${section.background}, ${section.background2})`);
-    const dark = section.backgroundImage ? section.overlay >= 35 || isDarkColor(section.background) : isDarkColor(section.background);
     return {
       backgroundColor: section.background,
       backgroundImage: layers.length ? layers.join(", ") : undefined,
-      ["--iw-text" as string]: section.textColor || (dark ? "#fffaf2" : "#243b31"),
-      ["--iw-muted" as string]: dark && !section.textColor ? "rgba(255,250,242,.78)" : "color-mix(in srgb, var(--iw-text) 72%, transparent)",
-      ["--iw-card" as string]: dark ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.72)",
-      ["--iw-line" as string]: dark ? "rgba(255,255,255,.2)" : "rgba(36,59,49,.14)",
+      ["--iw-text" as string]: palette.text,
+      ["--iw-muted" as string]: palette.text,
+      ["--iw-accent" as string]: palette.accent,
+      ["--iw-button-text" as string]: palette.buttonText,
+      ["--iw-card" as string]: palette.dark ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.72)",
+      ["--iw-line" as string]: palette.dark ? "rgba(255,255,255,.2)" : "rgba(36,59,49,.14)",
     };
   }
 
@@ -410,11 +432,12 @@ export default function InvitationWebRenderer({ design, event, guestName, primar
 
   function renderElementBody(element: InvitationElement, section: InvitationWebSection, sectionActive: boolean) {
     const isDirectEditable = editing && !live;
-    const color = element.color || undefined;
+    const palette = sectionPalette(section);
+    const color = readableColor(element.color || palette.text, palette.backgrounds);
     const textStyle: CSSProperties = { color, fontFamily: fontStack(element.fontFamily), fontSize: `clamp(${Math.min(element.fontSize, 15)}px, ${element.fontSize / 12}cqi, ${element.fontSize}px)`, fontWeight: element.fontWeight, fontStyle: element.italic ? "italic" : undefined, letterSpacing: element.letterSpacing ? `${element.letterSpacing / 10}em` : undefined, textAlign: element.align };
     const content = fill(element.content);
     const typed = element.motion.entrance === "typewriter" && (element.type === "text" || element.type === "heading");
-    const body = typed ? <TypeText text={content} active={sectionActive} speed={element.motion.speed === "slow" ? 70 : element.motion.speed === "fast" ? 22 : 40} /> : content;
+    const body = typed ? <TypeText key={`${sectionActive}-${content}`} text={content} active={sectionActive} speed={element.motion.speed === "slow" ? 70 : element.motion.speed === "fast" ? 22 : 40} /> : content;
     switch (element.type) {
       case "heading": return (
         <h3
@@ -451,7 +474,7 @@ export default function InvitationWebRenderer({ design, event, guestName, primar
         <span
           className={`iw-btn iw-btn-${element.variant || "solid"} iw-shadow-${element.shadow}`}
           role="button"
-          style={{ ...textStyle, ["--iw-btn-bg" as string]: element.background || accent, ["--iw-btn-fg" as string]: element.color || "#ffffff", color: undefined }}
+          style={{ ...textStyle, ["--iw-btn-bg" as string]: element.variant === "outline" ? readableColor(element.background || accent, palette.backgrounds) : element.background || accent, ["--iw-btn-fg" as string]: readableColor(element.color || "#ffffff", [element.background || accent]), color: undefined }}
           contentEditable={isDirectEditable}
           suppressContentEditableWarning
           onMouseDown={(e) => { if (isDirectEditable) e.stopPropagation(); }}

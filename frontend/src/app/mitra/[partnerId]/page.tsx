@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, Heart, MapPin, PackageCheck, Store } from "lucide-react";
+import { publicMetadata } from "@/lib/seo";
 
 const backendApiUrl = (process.env.KALAKAI_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -22,7 +23,9 @@ async function getPartner(id: string): Promise<Partner | null> {
 export async function generateMetadata({ params }: PageProps<"/mitra/[partnerId]">): Promise<Metadata> {
   const { partnerId } = await params;
   const partner = await getPartner(partnerId);
-  return { title: partner ? `${partner.business_name} — Katalog Mitra Kalakai` : "Detail Mitra — Kalakai" };
+  if (!partner) return { title: "Mitra tidak ditemukan — Kalakai", robots: { index: false, follow: false } };
+  const description = partner.description?.slice(0, 160) || `${partner.business_name}, mitra ${partner.category}${partner.city ? ` di ${partner.city}` : ""}. Lihat katalog layanan dan informasi usaha di Kalakai.`;
+  return publicMetadata(`${partner.business_name} — Mitra Kalakai`, description, `/mitra/${partner.id}`);
 }
 
 function formatPrice(value: number) {

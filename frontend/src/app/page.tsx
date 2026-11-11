@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { publicMetadata, siteDescription, siteUrl } from "@/lib/seo";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -16,6 +17,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import PartnerLogoRail, { type PartnerBrand } from "./PartnerLogoRail";
+
+export const metadata = publicMetadata("Kalakai — Undangan Digital & Manajemen Acara", siteDescription, "/");
 
 const backendApiUrl = (process.env.KALAKAI_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -107,6 +110,13 @@ export default async function PublicHomePage() {
   const partners = await getActivePartners();
   return (
     <main className="public-site">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "Organization", "@id": siteUrl + "/#organization", name: "Kalakai", url: siteUrl, logo: siteUrl + "/icon.svg" },
+          { "@type": "WebSite", name: "Kalakai", url: siteUrl, inLanguage: "id-ID", publisher: { "@id": siteUrl + "/#organization" } },
+        ],
+      }).replace(/</g, "\\u003c") }} />
       <header className="public-header">
         <div className="public-header-inner">
           <Link href="/" className="public-brand" aria-label="Kalakai beranda">

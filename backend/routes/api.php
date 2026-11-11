@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AdminEventPackageController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PartnerVerificationController;
 use App\Http\Controllers\Api\UserEventController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Models\PartnerProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,10 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('auth:sanctum');
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:20,1');
+});
 Route::middleware('auth:sanctum')->prefix('user/events')->group(function () {
     Route::get('/', [UserEventController::class, 'index']);
     Route::post('/', [UserEventController::class, 'store']);

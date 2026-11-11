@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import InvitationWebRenderer from "./InvitationWebRenderer";
 import { createDefaultInvitationWebDesign, normalizeInvitationWebDesign } from "../../invitation-web-types";
+import { readableColor } from "@/lib/template-colors";
 import { 
-  Heart, Calendar, MapPin, Music, VolumeX, Volume2, 
+  Heart, MapPin, Music, VolumeX, Volume2,
   Copy, Check, Send, QrCode, Clock, Sparkles, Navigation 
 } from "lucide-react";
 
@@ -261,6 +262,9 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
   const cssTheme = {
     "--invite-primary": theme.primary_color || "#e11d48",
     "--invite-accent": theme.accent_color || "#fb7185",
+    "--invite-text-accent": readableColor(theme.accent_color || theme.primary_color || "#fb7185", ["#1c1917", "#0c100f"]),
+    "--invite-button-bg": readableColor(theme.primary_color || "#e11d48", ["#ffffff"]),
+    "--invite-button-accent": readableColor(theme.accent_color || "#fb7185", ["#ffffff"]),
     "--invite-font": theme.font_family === "sans" ? "Arial, Helvetica, sans-serif" : "Georgia, 'Times New Roman', serif",
   } as React.CSSProperties;
 
@@ -503,7 +507,7 @@ export default function InvitationClient({ eventSlug, guestSlug }: { eventSlug: 
         <section className="min-h-screen flex flex-col items-center justify-center text-center p-6 bg-gradient-to-b from-stone-950 via-rose-950/60 to-stone-950 relative" style={theme.hero_image_url ? { backgroundImage: `linear-gradient(#11181499,#111814d9),url("${theme.hero_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
           {renderCanvasElements("cover")}
           <div className="max-w-2xl mx-auto space-y-6">
-            <span className="text-xs uppercase tracking-[0.3em] text-rose-300 font-mono">{event.event_type === "birthday" ? "MOMEN ULANG TAHUN" : event.event_type === "engagement" ? "MOMEN PERTUNANGAN" : "WALIMATUL &apos;URSY"}</span>
+            <span className="text-xs uppercase tracking-[0.3em] text-rose-300 font-mono">{event.event_type === "birthday" ? "MOMEN ULANG TAHUN" : event.event_type === "engagement" ? "MOMEN PERTUNANGAN" : "WALIMATUL 'URSY"}</span>
             <h1 className="text-5xl sm:text-7xl font-serif text-rose-100 font-bold tracking-tight">
               {displayNames.length ? <>{displayNames[0]?.split(" ")[0]} {displayNames[1] && <><span className="text-rose-500 font-light">&amp;</span> {displayNames[1]?.split(" ")[0]}</>}</> : event.title}
             </h1>

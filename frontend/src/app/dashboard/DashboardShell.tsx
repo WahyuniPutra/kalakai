@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart, type LucideIcon } from "lucide-react";
+import { Heart, UserRound, type LucideIcon } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 
 export type DashboardUser = { name: string; email: string; role: "super_admin" | "partner" | "user" };
@@ -15,10 +15,12 @@ export default function DashboardShell({
   user,
   nav,
   children,
+  profileActive = false,
 }: {
   user: DashboardUser;
   nav: DashboardNavItem[];
   children: React.ReactNode;
+  profileActive?: boolean;
 }) {
   return (
     <main className="workspace-shell">
@@ -34,6 +36,7 @@ export default function DashboardShell({
               <Icon size={17} />{label}
             </a>
           ))}
+          {user.role !== "super_admin" && <Link href="/dashboard/profil" aria-current={profileActive ? "page" : undefined} className={`nav-item${profileActive ? " nav-item-active" : ""}`}><UserRound size={17} />Profil saya</Link>}
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-note-icon"><Heart size={16} /></div>
@@ -49,7 +52,7 @@ export default function DashboardShell({
           <div className="breadcrumb"><span>Workspace</span><span aria-hidden="true">/</span><strong>{roleNames[user.role]}</strong></div>
           <div className="topbar-actions">
             <span className="secure-label">{user.name}</span>
-            <div className="avatar" aria-label={`Akun ${user.name}`}>{user.name.trim().charAt(0).toUpperCase()}</div>
+            {user.role === "super_admin" ? <div className="avatar" aria-label={`Akun ${user.name}`}>{user.name.trim().charAt(0).toUpperCase()}</div> : <Link href="/dashboard/profil" className="avatar" aria-label={`Buka profil ${user.name}`}>{user.name.trim().charAt(0).toUpperCase()}</Link>}
             <LogoutButton />
           </div>
         </header>
