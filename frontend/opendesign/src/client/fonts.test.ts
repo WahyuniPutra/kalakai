@@ -43,7 +43,7 @@ test("custom fonts validate, persist, reload and travel with brand kits", async 
       return this;
     }
   }
-  Object.assign(globalThis, { FontFace: Face, document: { fonts: { add: (face: Face) => {
+  Object.assign(globalThis, { window: { location: { origin: "https://kalakai.test", search: "?eventId=42" } }, FontFace: Face, document: { fonts: { add: (face: Face) => {
     assert.equal(face.loaded, true);
     registered.push(face.family);
   } } } });
@@ -51,7 +51,7 @@ test("custom fonts validate, persist, reload and travel with brand kits", async 
   let uploads = 0;
   globalThis.fetch = async (url, options) => {
     if (String(url).startsWith("data:")) return nativeFetch(url, options);
-    assert.equal(url, "/api/fonts");
+    assert.equal(url, "/api/opendesign/fonts?eventId=42");
     uploads++;
     const uploaded = (options?.body as FormData).get("file") as File;
     return Response.json(await storeFont(bucket as any, uploaded));

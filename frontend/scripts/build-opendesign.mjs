@@ -13,21 +13,8 @@ const run = (command, args) => spawnSync(command, args, {
 const builtHtml = path.join(process.cwd(), "public", "opendesign", "index.html");
 const alreadyBuilt = existsSync(builtHtml);
 
-const installed = run("pnpm", ["--version"]).status === 0;
-const command = installed ? "pnpm" : "npx";
-const prefix = installed ? [] : ["--yes", "pnpm@10"];
-
-if (!installed) {
-  console.log("pnpm belum ada; menyiapkan versi yang dipatok melalui npx.");
-  const bootstrap = run("npx", ["--yes", "pnpm@10", "--version"]);
-  if (bootstrap.status !== 0) {
-    if (alreadyBuilt) {
-      console.warn("Peringatan: bootstrapping pnpm dilewati karena bundle OpenDesign sudah tersedia di public/opendesign.");
-      process.exit(0);
-    }
-    process.exit(bootstrap.status ?? 1);
-  }
-}
+const command = "npx";
+const prefix = ["--yes", "pnpm@11.28.11"];
 
 for (const args of [
   [...prefix, "--dir", "opendesign", "install", "--frozen-lockfile"],
