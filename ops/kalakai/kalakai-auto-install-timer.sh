@@ -15,9 +15,7 @@ UNIT
 sudo -n tee /etc/systemd/system/kalakai-deploy-sync.service >/dev/null <<'UNIT'
 [Unit]
 Description=Sync Kalakai preview and merged main releases from GitHub
-Wants=network-online.target
-Requires=kalakai-preview-network.service
-RequiresMountsFor=/mnt/kalakai-preview-builds
+Wants=network-online.target kalakai-preview-network.service
 After=network-online.target kalakai-preview-network.service
 
 [Service]

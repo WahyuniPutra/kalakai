@@ -71,7 +71,11 @@ def active_previews():
     return active
 
 def previews():
+    run("systemctl", "is-active", "--quiet", "kalakai-preview-network.service")
     active = active_previews()
+    session_source = run("git", "-C", REPO, "show", "HEAD:frontend/src/lib/auth-proxy.ts", capture=True)
+    origin_guard = run("git", "-C", REPO, "cat-file", "-e", "HEAD:frontend/src/proxy.ts", check=False) == 0
+    open_to_forks = "__Host-kalakai_session" in session_source and origin_guard
     prs = []
     for page in range(1, 21):
         items, more = github(f"pulls?state=open&base=main&per_page=100&page={page}")
@@ -90,6 +94,10 @@ def previews():
         if number in active and active[number][0] == sha[:16]:
             continue
         if number not in active and INITIAL.get(number) == sha:
+            continue
+        source_repo = ((item["head"].get("repo") or {}).get("full_name") or "").lower()
+        if not open_to_forks and source_repo not in ("jrdrwn/kalakai", "wahyuniputra/kalakai"):
+            print(f"PREVIEW HELD PR #{number}: waiting for production session isolation", flush=True)
             continue
         failed = STATE / f"pr-{number}.failed"
         if failed.exists() and failed.read_text().strip() == sha and time.time() - failed.stat().st_mtime < 900:

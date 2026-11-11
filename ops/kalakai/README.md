@@ -17,6 +17,10 @@ and GitHub Actions must be allowed in the upstream repository. The periodic
 check also runs when the repository does not allow the pull request event.
 No GitHub or VPS secrets are required by the workflow.
 
+External forks are enabled once the live site has the host-only session
+cookie and API origin guard from this PR. Users with an old session will
+sign in once after the cookie name changes.
+
 Live deployment checks that the tip of upstream `main` is exactly the commit
 GitHub recorded as the result of a merged PR targeting `main`. Direct pushes do
 not trigger deployment. A failed production health check restores the previous

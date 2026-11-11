@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 n, sha, web, api = sys.argv[1:]
 assert re.fullmatch(r"[1-9][0-9]{0,8}", n)
@@ -67,6 +68,7 @@ server {{
     add_header X-Kalakai-Revision "{sha}" always;
     add_header Content-Security-Policy "script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'" always;
     add_header Referrer-Policy "same-origin" always;
+    proxy_ignore_headers X-Accel-Redirect X-Accel-Expires X-Accel-Limit-Rate X-Accel-Buffering X-Accel-Charset;
     limit_req zone=kalakai_preview burst=60 nodelay;
     limit_req_status 429;
     location = /robots.txt {{
@@ -93,10 +95,19 @@ server {{
     if not enabled.is_symlink():
         enabled.symlink_to(destination)
     reload()
-    run("curl", "-fsS", "--max-time", "10", "--resolve", f"{host}:443:127.0.0.1",
-        "-o", "/dev/null", f"https://{host}/api/health")
-    run("curl", "-fsS", "--max-time", "10", "--resolve", f"{host}:443:127.0.0.1",
-        "-o", "/dev/null", f"https://{host}/")
+    for attempt in range(12):
+        # reload returns before the previous workers stop taking connections.
+        # On updates, HTTP 200 alone could still be the previous revision.
+        command = ["curl", "-fsS", "--max-time", "4", "--resolve", f"{host}:443:127.0.0.1",
+                   "-D", "-", "-o", "/dev/null", f"https://{host}/"]
+        response = subprocess.run(command, capture_output=True, text=True)
+        if response.returncode == 0 and f"x-kalakai-revision: {sha}" in response.stdout.lower().splitlines():
+            run("curl", "-fsS", "--max-time", "10", "--resolve", f"{host}:443:127.0.0.1",
+                "-o", "/dev/null", f"https://{host}/api/health")
+            break
+        time.sleep(1)
+    else:
+        raise RuntimeError(f"Nginx did not serve revision {sha} for {host}: {response.stderr.strip()}")
 except BaseException:
     put(legacy, previous_legacy)
     if previous is None:

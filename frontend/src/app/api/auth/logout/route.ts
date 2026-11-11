@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { backendApiUrl, sessionCookie } from "@/lib/auth-proxy";
+import { backendApiUrl, sessionCookie, sessionCookieOptions } from "@/lib/auth-proxy";
 
 export async function POST() {
   const cookieStore = await cookies();
@@ -19,6 +19,6 @@ export async function POST() {
   }
 
   const response = NextResponse.json({ message: "Anda berhasil keluar." });
-  response.cookies.delete(sessionCookie);
+  response.cookies.set(sessionCookie, "", { ...sessionCookieOptions, maxAge: 0 });
   return response;
 }
