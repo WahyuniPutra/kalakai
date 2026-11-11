@@ -1,9 +1,31 @@
 import Link from "next/link";
-import { Heart, UserRound, type LucideIcon } from "lucide-react";
+import Image from "next/image";
+import { ArrowUpRight, CalendarDays, ClipboardList, LayoutDashboard, Store, UserRound, type LucideIcon } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 
 export type DashboardUser = { name: string; email: string; role: "super_admin" | "partner" | "user" };
 export type DashboardNavItem = { label: string; href: string; icon: LucideIcon; active?: boolean };
+type WorkspaceSection = "overview" | "events" | "requests" | "catalog" | "profile";
+type WorkspaceNavItem = DashboardNavItem & { section: WorkspaceSection };
+
+const sharedNav: WorkspaceNavItem[] = [
+  { section: "overview", label: "Ringkasan", href: "/dashboard", icon: LayoutDashboard },
+];
+const profileNav: WorkspaceNavItem = { section: "profile", label: "Profil saya", href: "/dashboard/profil", icon: UserRound };
+const memberNav: Record<"user" | "partner", WorkspaceNavItem[]> = {
+  user: [
+    ...sharedNav,
+    { section: "events", label: "Acara saya", href: "/dashboard/acara", icon: CalendarDays },
+    { section: "requests", label: "Permintaan layanan", href: "/dashboard/layanan", icon: ClipboardList },
+    profileNav,
+  ],
+  partner: [
+    ...sharedNav,
+    { section: "requests", label: "Permintaan masuk", href: "/dashboard/layanan", icon: ClipboardList },
+    { section: "catalog", label: "Katalog layanan", href: "/dashboard/katalog", icon: Store },
+    profileNav,
+  ],
+};
 
 const roleNames: Record<DashboardUser["role"], string> = {
   super_admin: "Super Admin",
@@ -13,43 +35,40 @@ const roleNames: Record<DashboardUser["role"], string> = {
 
 export default function DashboardShell({
   user,
-  nav,
+  nav = [],
   children,
-  profileActive = false,
+  section = "overview",
 }: {
   user: DashboardUser;
-  nav: DashboardNavItem[];
+  nav?: DashboardNavItem[];
   children: React.ReactNode;
-  profileActive?: boolean;
+  section?: WorkspaceSection;
 }) {
+  const items = user.role === "super_admin" ? nav : memberNav[user.role].map((item) => ({ ...item, active: item.section === section }));
   return (
     <main className="workspace-shell">
       <aside className="workspace-sidebar">
-        <Link href="/" className="brand-lockup" aria-label="Kalakai, beranda">
-          <span className="brand-mark"><Heart size={19} fill="currentColor" strokeWidth={1.5} /></span>
-          <span className="brand-name">kalakai<span className="brand-period">.</span><small>KERABAT KALAKAI</small></span>
+        <Link href="/dashboard" className="brand-lockup" aria-label="Kalakai, ringkasan dashboard">
+          <Image className="workspace-logo" src="/icon.svg" width={42} height={42} alt="" priority />
+          <span className="brand-name">kalakai<span className="brand-period">.</span><small>RUANG KERJA</small></span>
         </Link>
         <div className="sidebar-label">{roleNames[user.role].toUpperCase()}</div>
         <nav className="sidebar-nav" aria-label="Navigasi dashboard">
-          {nav.map(({ label, href, icon: Icon, active }) => (
-            <a className={`nav-item${active ? " nav-item-active" : ""}`} href={href} key={label}>
-              <Icon size={17} />{label}
-            </a>
+          {items.map(({ label, href, icon: Icon, active }) => (
+            <Link className={`nav-item${active ? " nav-item-active" : ""}`} href={href} key={label} aria-current={active ? "page" : undefined}>
+              <Icon size={18} aria-hidden="true" /><span>{label}</span>
+            </Link>
           ))}
-          {user.role !== "super_admin" && <Link href="/dashboard/profil" aria-current={profileActive ? "page" : undefined} className={`nav-item${profileActive ? " nav-item-active" : ""}`}><UserRound size={17} />Profil saya</Link>}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note-icon"><Heart size={16} /></div>
-          <p>Kalakai menghubungkan cerita, tamu, dan mitra.</p>
-          <span>Produk digital Kerabat Kalakai</span>
-          <Link href="/">Kembali ke situs <span aria-hidden="true">↗</span></Link>
+          <Link href="/">Buka situs Kalakai <ArrowUpRight size={15} aria-hidden="true" /></Link>
         </div>
         <div className="sidebar-footer">© 2026 Kalakai Id</div>
       </aside>
 
       <section className="workspace-main">
         <header className="workspace-topbar">
-          <div className="breadcrumb"><span>Workspace</span><span aria-hidden="true">/</span><strong>{roleNames[user.role]}</strong></div>
+          <div className="breadcrumb"><strong>{roleNames[user.role]}</strong></div>
           <div className="topbar-actions">
             <span className="secure-label">{user.name}</span>
             {user.role === "super_admin" ? <div className="avatar" aria-label={`Akun ${user.name}`}>{user.name.trim().charAt(0).toUpperCase()}</div> : <Link href="/dashboard/profil" className="avatar" aria-label={`Buka profil ${user.name}`}>{user.name.trim().charAt(0).toUpperCase()}</Link>}

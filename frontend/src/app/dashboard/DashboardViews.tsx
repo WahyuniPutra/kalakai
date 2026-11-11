@@ -48,25 +48,13 @@ type Summary = {
   requests?: ServiceRequest[];
 };
 
-const navigation: Record<DashboardUser["role"], DashboardNavItem[]> = {
-  user: [
-    { label: "Ringkasan", href: "#ringkasan", icon: LayoutDashboard, active: true },
-    { label: "Acara saya", href: "#acara", icon: CalendarDays },
-    { label: "Permintaan layanan", href: "#layanan", icon: ClipboardList },
-  ],
-  partner: [
-    { label: "Ringkasan", href: "#ringkasan", icon: LayoutDashboard, active: true },
-    { label: "Permintaan masuk", href: "#permintaan", icon: ClipboardList },
-    { label: "Katalog layanan", href: "#katalog", icon: Store },
-  ],
-  super_admin: [
+const adminNavigation: DashboardNavItem[] = [
     { label: "Ringkasan", href: "#ringkasan", icon: LayoutDashboard, active: true },
     { label: "Verifikasi mitra", href: "#verifikasi", icon: ShieldCheck },
     { label: "Permintaan layanan", href: "#permintaan", icon: ClipboardList },
     { label: "Akun & mitra", href: "#akun", icon: UsersRound },
     { label: "Aktivitas platform", href: "#aktivitas", icon: Activity },
-  ],
-};
+];
 
 function formatCurrency(value: number | null | undefined) {
   if (value == null) return "Menunggu penawaran";
@@ -105,7 +93,7 @@ export function UserDashboard({ summary }: { summary: Summary }) {
   const events = summary.events ?? [];
   const requests = summary.service_requests ?? [];
   const firstName = summary.user.name.split(" ")[0];
-  return <DashboardShell user={summary.user} nav={navigation.user}>
+  return <DashboardShell user={summary.user}>
     <div id="ringkasan">
       <PageHeading eyebrow="RUANG ACARA PRIBADI" title={`Selamat datang, ${firstName}.`} description="Rancang undangan, atur tampilan, dan bagikan tautan acara dari satu ruang." action={<Link className="primary-button" href="/dashboard/undangan/new"><Heart size={15} />Buat undangan<ArrowUpRight size={14} /></Link>} />
       <StatCards items={[
@@ -115,10 +103,10 @@ export function UserDashboard({ summary }: { summary: Summary }) {
         { label: "Permintaan mitra", value: summary.stats.service_requests ?? 0, icon: Store, note: "Layanan acara" },
       ]} />
       <div className="dashboard-content-grid">
-        <section className="dashboard-panel" id="acara"><div className="dashboard-panel-heading"><div><p className="eyebrow">RUANG ACARA</p><h2>Acara Anda</h2></div><CalendarDays size={17} /></div>
-          {events.length ? <div className="dashboard-event-list">{events.map((event) => <article className="dashboard-event-card" key={event.id}><div className="dashboard-event-date"><CalendarDays size={17} /><span>{formatDate(event.event_date)}</span></div><h3>{event.title}</h3><p><MapPin size={13} />{event.location_name ?? "Lokasi belum diatur"}</p><div className="dashboard-event-footer"><span><UsersRound size={13} />{event.guests_count} tamu · {event.is_published ? "Terbit" : "Draf"}</span><Link href={`/dashboard/undangan/${event.id}`}>{event.is_published ? "Edit undangan" : "Lanjutkan edit"} <ExternalLink size={13} /></Link></div>{event.is_published && <Link className="dashboard-event-public-link" href={`/${event.slug}`}>Lihat tautan publik</Link>}</article>)}</div> : <div className="dashboard-empty"><CalendarDays size={22} /><p>Belum ada undangan. Mulai dari template atau rancang dari awal.</p><Link className="dashboard-empty-action" href="/dashboard/undangan/new">Buat undangan pertama <ArrowUpRight size={15} /></Link></div>}
+        <section className="dashboard-panel" id="acara"><div className="dashboard-panel-heading"><h2>Acara terbaru</h2><Link className="workspace-text-link" href="/dashboard/acara">Semua acara <ArrowUpRight size={14} /></Link></div>
+          {events.length ? <div className="dashboard-event-list">{events.slice(0, 3).map((event) => <article className="dashboard-event-card" key={event.id}><div className="dashboard-event-date"><CalendarDays size={17} /><span>{formatDate(event.event_date)}</span></div><h3>{event.title}</h3><p><MapPin size={13} />{event.location_name ?? "Lokasi belum diatur"}</p><div className="dashboard-event-footer"><span><UsersRound size={13} />{event.guests_count} tamu · {event.is_published ? "Terbit" : "Draf"}</span><Link href={`/dashboard/undangan/${event.id}`}>{event.is_published ? "Edit undangan" : "Lanjutkan edit"} <ExternalLink size={13} /></Link></div>{event.is_published && <Link className="dashboard-event-public-link" href={`/${event.slug}`}>Lihat tautan publik</Link>}</article>)}</div> : <div className="dashboard-empty"><CalendarDays size={22} /><p>Belum ada undangan.</p><Link className="dashboard-empty-action" href="/dashboard/undangan/new">Buat undangan pertama <ArrowUpRight size={15} /></Link></div>}
         </section>
-        <section className="dashboard-panel" id="layanan"><div className="dashboard-panel-heading"><div><p className="eyebrow">KERABAT KALAKAI</p><h2>Permintaan layanan</h2></div><Store size={17} /></div><RequestList requests={requests} emptyText="Belum ada permintaan ke mitra." /></section>
+        <section className="dashboard-panel" id="layanan"><div className="dashboard-panel-heading"><h2>Permintaan layanan</h2><Link className="workspace-text-link" href="/dashboard/layanan">Buka layanan <ArrowUpRight size={14} /></Link></div><RequestList requests={requests} emptyText="Belum ada permintaan ke mitra." /></section>
       </div>
     </div>
   </DashboardShell>;
@@ -127,7 +115,7 @@ export function UserDashboard({ summary }: { summary: Summary }) {
 export function PartnerDashboard({ summary }: { summary: Summary }) {
   const profile = summary.profile;
   const requests = summary.requests ?? [];
-  return <DashboardShell user={summary.user} nav={navigation.partner}>
+  return <DashboardShell user={summary.user}>
     <div id="ringkasan">
       <PageHeading eyebrow="RUANG MITRA KERABAT KALAKAI" title={`Halo, ${profile?.business_name ?? summary.user.name}.`} description="Pantau peluang pekerjaan, katalog, dan permintaan pelanggan Anda." action={<span className="partner-status-label"><ShieldCheck size={14} />Profil <StatusBadge status={profile?.status ?? "pending"} /></span>} />
       <StatCards items={[
@@ -137,10 +125,10 @@ export function PartnerDashboard({ summary }: { summary: Summary }) {
         { label: "Selesai", value: summary.stats.completed ?? 0, icon: Check, note: "Riwayat pekerjaan" },
       ]} />
       <div className="dashboard-content-grid">
-        <section className="dashboard-panel dashboard-panel-wide" id="permintaan"><div className="dashboard-panel-heading"><div><p className="eyebrow">PELUANG PEKERJAAN</p><h2>Permintaan masuk</h2></div><ClipboardList size={17} /></div>
+        <section className="dashboard-panel dashboard-panel-wide" id="permintaan"><div className="dashboard-panel-heading"><h2>Permintaan masuk</h2><Link className="workspace-text-link" href="/dashboard/layanan">Buka permintaan <ArrowUpRight size={14} /></Link></div>
           <RequestList requests={requests} emptyText="Belum ada permintaan pekerjaan baru." />
         </section>
-        <section className="dashboard-panel" id="katalog"><div className="dashboard-panel-heading"><div><p className="eyebrow">PROFIL MITRA</p><h2>{profile?.category ?? "Kategori layanan"}</h2></div><Store size={17} /></div>
+        <section className="dashboard-panel" id="katalog"><div className="dashboard-panel-heading"><h2>Katalog layanan</h2><Link className="workspace-text-link" href="/dashboard/katalog">Kelola katalog <ArrowUpRight size={14} /></Link></div>
           {profile ? <><p className="partner-profile-description">{profile.description}</p><div className="partner-location"><MapPin size={14} />{profile.city ?? "Lokasi belum diatur"}</div><div className="partner-catalog">{(profile.catalog ?? []).map((item) => <div key={item.name}><span><strong>{item.name}</strong><small>Mulai dari {formatCurrency(item.price_from)} / {item.unit}</small></span><Check size={14} /></div>)}</div></> : <div className="dashboard-empty"><Store size={22} /><p>Profil mitra belum dibuat.</p></div>}
         </section>
       </div>
@@ -149,7 +137,7 @@ export function PartnerDashboard({ summary }: { summary: Summary }) {
 }
 
 export function AdminDashboard({ summary }: { summary: Summary }) {
-  return <DashboardShell user={summary.user} nav={navigation.super_admin}>
+  return <DashboardShell user={summary.user} nav={adminNavigation}>
     <div id="ringkasan">
       <PageHeading eyebrow="PENGELOLAAN PLATFORM" title="Ringkasan Kalakai" description="Pantau akun, mitra, acara, dan permintaan layanan di ekosistem Kalakai." action={<span className="admin-secure-label"><ShieldCheck size={15} />Akses Super Admin</span>} />
       <StatCards items={[

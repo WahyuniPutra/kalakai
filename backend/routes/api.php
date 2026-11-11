@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PartnerVerificationController;
 use App\Http\Controllers\Api\UserEventController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ServiceRequestController;
 use App\Models\PartnerProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +44,10 @@ Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middl
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:20,1');
+    Route::patch('/profile/catalog', [ProfileController::class, 'updateCatalog'])->middleware('throttle:20,1');
+    Route::get('/service-requests', [ServiceRequestController::class, 'index']);
+    Route::post('/service-requests', [ServiceRequestController::class, 'store'])->middleware('throttle:20,1');
+    Route::patch('/service-requests/{serviceRequest}', [ServiceRequestController::class, 'update'])->whereNumber('serviceRequest')->middleware('throttle:30,1');
 });
 Route::middleware('auth:sanctum')->prefix('user/events')->group(function () {
     Route::get('/', [UserEventController::class, 'index']);

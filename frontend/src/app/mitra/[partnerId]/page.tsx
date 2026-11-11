@@ -53,7 +53,7 @@ export default async function PartnerDetailPage({ params }: PageProps<"/mitra/[p
           <div><span className="partner-directory-category">{partner.category}</span><h1>{partner.business_name}</h1><p className="partner-directory-location"><MapPin size={16} />{partner.city || "Melayani berbagai kota"}</p></div>
         </div>
         <p className="partner-detail-description">{partner.description || "Mitra Kerabat Kalakai yang siap membantu kebutuhan acara Anda."}</p>
-        <Link className="partner-detail-cta" href="/register">Ajukan layanan melalui Kalakai <ArrowUpRight size={17} /></Link>
+        <Link className="partner-detail-cta" href={`/dashboard/layanan?mitra=${partner.id}#ajukan`}>Ajukan layanan melalui Kalakai <ArrowUpRight size={17} /></Link>
       </section>
       <section className="partner-detail-services">
         <div className="partner-detail-services-heading"><div><p className="public-eyebrow"><span />KATALOG LAYANAN</p><h2>Pilih layanan yang Anda butuhkan.</h2></div><span>{(partner.catalog ?? []).length} layanan</span></div>

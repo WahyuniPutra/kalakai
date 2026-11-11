@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { publicMetadata, siteDescription, siteUrl } from "@/lib/seo";
 import {
   ArrowRight,
@@ -120,7 +121,7 @@ export default async function PublicHomePage() {
       <header className="public-header">
         <div className="public-header-inner">
           <Link href="/" className="public-brand" aria-label="Kalakai beranda">
-            <span className="public-brand-mark"><Heart size={18} fill="currentColor" /></span>
+            <Image src="/icon.svg" width={34} height={34} alt="" />
             <span>kalakai<span>.</span></span>
           </Link>
           <nav className="public-nav" aria-label="Navigasi halaman">
@@ -271,7 +272,7 @@ export default async function PublicHomePage() {
       </section>
 
       <footer className="public-footer">
-        <Link href="/" className="public-brand"><span className="public-brand-mark"><Heart size={17} fill="currentColor" /></span><span>kalakai<span>.</span></span></Link>
+        <Link href="/" className="public-brand"><Image src="/icon.svg" width={34} height={34} alt="" /><span>kalakai<span>.</span></span></Link>
         <p>Teknologi untuk momen yang berarti.</p>
         <div><Link href="/mitra">Katalog mitra</Link><Link href="/login">Masuk</Link><Link href="/register">Daftar</Link><Link href="/romeo-juliet/resepsionis">Demo resepsionis</Link></div>
         <span className="public-copyright">© 2026 Kalakai Id · Kerabat Kalakai</span>
