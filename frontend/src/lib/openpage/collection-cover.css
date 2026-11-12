@@ -1,4 +1,4 @@
-.cover {
+.kalakai-cover-cover {
   container-type: inline-size;
   padding: clamp(1.25rem, 5%, 4rem);
   background: var(--cover-paper);
@@ -6,7 +6,7 @@
   text-align: center;
 }
 
-.sheet {
+.kalakai-cover-sheet {
   position: relative;
   display: grid;
   justify-items: center;
@@ -19,14 +19,14 @@
   background-color: var(--cover-panel);
 }
 
-.eyebrow, .date {
+.kalakai-cover-eyebrow, .kalakai-cover-date {
   font: 600 clamp(.65rem, 2.2cqw, .9rem)/1.4 system-ui, sans-serif;
   letter-spacing: .17em;
   text-transform: uppercase;
   color: var(--cover-accent);
 }
 
-.heading {
+.kalakai-cover-heading {
   max-width: 100%;
   margin: 0;
   font: 400 clamp(2rem, 9cqw, 5.5rem)/1.02 Georgia, serif;
@@ -34,15 +34,15 @@
   text-wrap: balance;
 }
 
-.description { max-width: 34rem; margin: 0; color: var(--cover-muted); font-size: .9rem; }
-.ornament { color: var(--cover-accent); font-size: clamp(1.2rem, 5cqw, 2.5rem); }
+.kalakai-cover-description { max-width: 34rem; margin: 0; color: var(--cover-muted); font-size: .9rem; }
+.kalakai-cover-ornament { color: var(--cover-accent); font-size: clamp(1.2rem, 5cqw, 2.5rem); }
 
-.pavilion .sheet {
+.kalakai-cover-pavilion .kalakai-cover-sheet {
   border: 3px double var(--cover-accent);
   border-radius: 50% 50% 46% 46% / 31% 31% 22% 22%;
 }
 
-.botanical .sheet {
+.kalakai-cover-botanical .kalakai-cover-sheet {
   border: 1px solid var(--cover-accent);
   background-image:
     radial-gradient(ellipse at 4% 12%, #ca89916e 0 6%, transparent 6.5%),
@@ -53,15 +53,15 @@
     radial-gradient(ellipse at 96% 72%, #60704840 0 6%, transparent 6.5%);
 }
 
-.photo {
+.kalakai-cover-photo {
   width: min(100%, 32rem);
   aspect-ratio: 2 / 1;
   border: 1px solid var(--cover-accent);
   background: color-mix(in srgb, var(--cover-accent) 18%, var(--cover-paper));
 }
-.photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.kalakai-cover-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-.woven .sheet {
+.kalakai-cover-woven .kalakai-cover-sheet {
   border-block: 1px solid var(--cover-accent);
   padding-block: clamp(2.5rem, 10cqw, 5rem);
   background-image: repeating-conic-gradient(from 45deg, var(--cover-accent) 0 25%, transparent 0 50%),
@@ -71,13 +71,13 @@
   background-position: center top, center bottom;
 }
 
-.folio { text-align: left; }
-.folio .sheet { justify-items: start; border-block: 1px solid var(--cover-accent); }
-.folio .heading { text-wrap: pretty; }
-.folio .photo { aspect-ratio: 3 / 2; border-inline-start-width: .25rem; }
+.kalakai-cover-folio { text-align: left; }
+.kalakai-cover-folio .kalakai-cover-sheet { justify-items: start; border-block: 1px solid var(--cover-accent); }
+.kalakai-cover-folio .kalakai-cover-heading { text-wrap: pretty; }
+.kalakai-cover-folio .kalakai-cover-photo { aspect-ratio: 3 / 2; border-inline-start-width: .25rem; }
 
-.letter .sheet { border: 1px solid var(--cover-accent); }
-.monogram {
+.kalakai-cover-letter .kalakai-cover-sheet { border: 1px solid var(--cover-accent); }
+.kalakai-cover-monogram {
   display: grid;
   place-items: center;
   width: clamp(2.25rem, 16cqw, 5rem);
@@ -88,9 +88,9 @@
   font: 400 clamp(.8rem, 4cqw, 1.65rem)/1 Georgia, serif;
 }
 
-.miniature { padding: .7rem; }
-.miniature .sheet { min-height: 10.5rem; padding: .85rem; gap: .35rem; }
-.miniature .heading { font-size: clamp(1rem, 9cqw, 1.85rem); }
-.miniature .eyebrow, .miniature .date { font-size: .55rem; }
-.miniature .photo { width: 70%; height: 1.85rem; }
-.miniature.woven .sheet { padding-block: 1.2rem; }
+.kalakai-cover-miniature { padding: .7rem; }
+.kalakai-cover-miniature .kalakai-cover-sheet { min-height: 10.5rem; padding: .85rem; gap: .35rem; }
+.kalakai-cover-miniature .kalakai-cover-heading { font-size: clamp(1rem, 9cqw, 1.85rem); }
+.kalakai-cover-miniature .kalakai-cover-eyebrow, .kalakai-cover-miniature .kalakai-cover-date { font-size: .55rem; }
+.kalakai-cover-miniature .kalakai-cover-photo { width: 70%; height: 1.85rem; }
+.kalakai-cover-miniature.kalakai-cover-woven .kalakai-cover-sheet { padding-block: 1.2rem; }

@@ -319,7 +319,9 @@ export default function OpenPageRenderer({
                   <section id="hero" key={block.id}>
                     <CollectionCover layout={collection.layout} theme={theme}
                       title={block.content.title || event.title} eyebrow={block.content.eyebrow}
-                      date={block.content.dateText} description={block.content.subtitle} photo={coverImg} />
+                      date={block.content.dateText} description={block.content.subtitle} photo={coverImg}
+                      ornament={ornament && <span className="w-12" aria-hidden="true"
+                        style={{ color: theme.accentColor }} dangerouslySetInnerHTML={{ __html: ornament }} />} />
                   </section>
                 );
               }

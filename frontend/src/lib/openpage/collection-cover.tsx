@@ -1,7 +1,7 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { collectionInitials, type CollectionLayout } from "../invitation-collection";
 import type { OpenPageTheme } from "./schema";
-import styles from "./collection-cover.module.css";
+import "./collection-cover.css";
 
 interface Props {
   layout: CollectionLayout;
@@ -11,33 +11,35 @@ interface Props {
   date?: string;
   description?: string;
   photo?: string;
+  ornament?: ReactNode;
   miniature?: boolean;
 }
 
-export function CollectionCover({ layout, theme, title, eyebrow, date, description, photo, miniature }: Props) {
+export function CollectionCover({ layout, theme, title, eyebrow, date, description, photo, ornament, miniature }: Props) {
   const Heading = miniature ? "span" : "h1";
   const hasPhoto = layout === "botanical" || layout === "folio";
   return (
     <div
-      className={`${styles.cover} ${styles[layout]}${miniature ? ` ${styles.miniature}` : ""}`}
+      className={`kalakai-cover-cover kalakai-cover-${layout}${miniature ? " kalakai-cover-miniature" : ""}`}
+      data-layout={layout}
       style={{
         "--cover-paper": theme.bgColor, "--cover-panel": theme.cardBgColor, "--cover-ink": theme.textColor,
         "--cover-accent": theme.accentColor, "--cover-muted": theme.textMutedColor,
       } as CSSProperties}
     >
-      <div className={styles.sheet}>
-        {layout === "letter" && <span className={styles.monogram} aria-hidden="true">{collectionInitials(title)}</span>}
-        {layout === "pavilion" && <span className={styles.ornament} aria-hidden="true">✦</span>}
-        <span className={styles.eyebrow}>{eyebrow || "Undangan Pernikahan"}</span>
-        <Heading className={styles.heading}>{title}</Heading>
+      <div className="kalakai-cover-sheet">
+        {layout === "letter" && <span className="kalakai-cover-monogram" aria-hidden="true">{collectionInitials(title)}</span>}
+        {ornament || (layout === "pavilion" && <span className="kalakai-cover-ornament" aria-hidden="true">✦</span>)}
+        <span className="kalakai-cover-eyebrow">{eyebrow || "Undangan Pernikahan"}</span>
+        <Heading className="kalakai-cover-heading">{title}</Heading>
         {hasPhoto && (photo || miniature) && (
-          <div className={styles.photo} aria-hidden="true">
+          <div className="kalakai-cover-photo" aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {photo && <img src={photo} alt="" />}
           </div>
         )}
-        {date && <span className={styles.date}>{date}</span>}
-        {description && <p className={styles.description}>{description}</p>}
+        {date && <span className="kalakai-cover-date">{date}</span>}
+        {description && <p className="kalakai-cover-description">{description}</p>}
       </div>
     </div>
   );
