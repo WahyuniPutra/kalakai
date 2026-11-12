@@ -6,11 +6,13 @@
  */
 
 import type { OpenPageConfig, OpenPageTheme, OpenPageBlock } from "./schema";
+import { INVITATION_COLLECTION, type CollectionLayout } from "../invitation-collection";
+import { mixColor, readableColor } from "../template-colors";
 
 export interface OpenPageTemplate {
   id: string;
   name: string;
-  category: "luxury" | "adat" | "minimalist" | "floral" | "syari" | "rustic" | "slider";
+  category: "luxury" | "adat" | "minimalist" | "floral" | "syari" | "rustic" | "slider" | "no-photo";
   categoryLabel: string;
   badge: string;
   badgeColor: string;
@@ -19,6 +21,7 @@ export interface OpenPageTemplate {
   description: string;
   thumbnailGradient: string;
   previewImage: string;
+  collectionLayout?: CollectionLayout;
   theme: OpenPageTheme;
   quoteDefault: string;
   quoteSourceDefault: string;
@@ -26,7 +29,52 @@ export interface OpenPageTemplate {
   apply: (current: OpenPageConfig, eventInfo?: any) => OpenPageConfig;
 }
 
+const collectionCategories = {
+  Luxury: "luxury", Floral: "floral", Nusantara: "adat", Minimalist: "minimalist", "Tanpa Foto": "no-photo",
+} as const;
+const collectionLabels = {
+  Luxury: "Mewah", Floral: "Floral", Nusantara: "Nusantara", Minimalist: "Minimalis", "Tanpa Foto": "Tanpa Foto",
+} as const;
+
+const collectionTemplates = INVITATION_COLLECTION.map((design): OpenPageTemplate => {
+  const { id, name, layout, background, accent, surface, description } = design;
+  const theme: OpenPageTheme = {
+    preset: id, primaryColor: accent, accentColor: accent, bgColor: background, cardBgColor: surface,
+    textColor: readableColor("#27221E", [background, surface]),
+    textMutedColor: readableColor("#6B5E58", [background, surface]),
+    borderColor: mixColor(background, accent, 0.37), fontDisplay: "serif", fontBody: "sans",
+    borderRadius: layout === "folio" || layout === "woven" ? "md" : "xl",
+  };
+  return {
+    id, name, description, theme, category: collectionCategories[design.category],
+    categoryLabel: collectionLabels[design.category], badge: "", badgeColor: "",
+    layoutArchetype: "classic-vertical", layoutLabel: name, collectionLayout: layout,
+    thumbnailGradient: background, previewImage: "", quoteDefault: "", quoteSourceDefault: "",
+    eyebrowDefault: "Undangan Pernikahan",
+    apply: (current) => ({
+      ...current,
+      layoutArchetype: "classic-vertical",
+      theme,
+      blocks: current.blocks.map((block) => {
+        switch (block.type) {
+          case "hero":
+            return { ...block, variant: `collection-${layout}` };
+          case "couple":
+            return { ...block, variant: layout === "folio" ? "alternating-editorial" : "split" };
+          case "schedule":
+            return { ...block, variant: layout === "folio" ? "agenda-timeline" : "cards" };
+          case "countdown":
+            return { ...block, variant: "minimal-pill" };
+          default:
+            return block;
+        }
+      }),
+    }),
+  };
+});
+
 export const OPENPAGE_CATALOG_TEMPLATES: OpenPageTemplate[] = [
+  ...collectionTemplates,
   // 1. ELLIOTT SIGNATURE - KAHAYAN ROYAL LUXURY ARCH (BINGKAI KUBAH ISTANA)
   {
     id: "kahayan-royal-emerald",
