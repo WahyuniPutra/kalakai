@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { backendApiUrl, sessionCookie } from "@/lib/auth-proxy";
 import { readableColor } from "@/lib/template-colors";
+import { collectionCover, INVITATION_COLLECTION, type CollectionDesign } from "@/lib/invitation-collection";
 import { collectFields, fillPages } from "../../../../../opendesign/src/server/fields";
 
 type Page = { id: string; design_id: string; title: string; canvas_json: string; sort_order: number; created_at: string };
@@ -28,8 +29,9 @@ type EventResult = { response: NextResponse } | { data: EventData };
 type StateResult = { response: NextResponse } | { data: EventData; theme: Record<string, unknown>; state: OpenState };
 
 const stamp = () => new Date().toISOString();
-type InvitationTemplate = { id: string; name: string; category: string; background: string; accent: string; motif: string; photo?: boolean; style?: "geometric" | "floral" | "minimal" };
+type InvitationTemplate = { id: string; name: string; category: string; background: string; accent: string; motif: string; photo?: boolean; style?: "geometric" | "floral" | "minimal"; collection?: CollectionDesign };
 const templateStyles: InvitationTemplate[] = [
+  ...INVITATION_COLLECTION.map((design) => ({ ...design, motif: "", collection: design })),
   { id: "luxury-onyx", name: "Onyx & Gold", category: "Luxury", background: "#171717", accent: "#d6b66e", motif: "✦" },
   { id: "luxury-ivory", name: "Ivory Pearl", category: "Luxury", background: "#f4eee3", accent: "#8b7048", motif: "❦" },
   { id: "luxury-burgundy", name: "Burgundy Soirée", category: "Luxury", background: "#351b25", accent: "#e2c99b", motif: "✧" },
@@ -56,6 +58,8 @@ const templateStyles: InvitationTemplate[] = [
   { id: "no-photo-terracotta", name: "Terracotta Type", category: "Tanpa Foto", background: "#f0e2d7", accent: "#9f634f", motif: "❋" },
   { id: "no-photo-golden", name: "Golden Script", category: "Tanpa Foto", background: "#faf5e9", accent: "#9d7a44", motif: "❦" },
 ];
+const freeTemplates = new Set(["luxury-onyx", "floral-garden", "minimal-linen",
+  ...INVITATION_COLLECTION.filter((design) => "free" in design && design.free).map((design) => design.id)]);
 
 function templateJson(template: InvitationTemplate, event: EventData) {
   const { background, motif } = template;
@@ -63,6 +67,11 @@ function templateJson(template: InvitationTemplate, event: EventData) {
   const theme = event.theme_config ?? {};
   const couple = [event.groom_name, event.bride_name].filter(Boolean).join(" & ") || "Nama & Pasangan";
   const date = event.event_date ? new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(event.event_date)) : "Tanggal acara";
+  const eyebrow = event.event_type === "birthday" ? "THE CELEBRATION" : event.event_type === "engagement" ? "THE ENGAGEMENT" : "UNDANGAN PERNIKAHAN";
+  if (template.collection) {
+    return collectionCover(template.collection, { couple, date, eyebrow,
+      photoUrl: typeof theme.hero_image_url === "string" ? theme.hero_image_url : undefined });
+  }
   const foreground = readableColor("#fffaf0", [background]);
   const frame = template.style === "minimal" ? [] : [
     { type: "rect", left: 68, top: 68, width: 944, height: 1784, fill: "rgba(0,0,0,0)", stroke: accent, strokeWidth: 2 },
@@ -100,7 +109,7 @@ function templateJson(template: InvitationTemplate, event: EventData) {
 function templatePages(template: InvitationTemplate, event: EventData): TemplatePage[] {
   const cover = JSON.parse(templateJson(template, event)) as { objects: Record<string, unknown>[] };
   const contentStart = cover.objects.findIndex((object) => object.fieldName === "event_type");
-  const shell = contentStart > 0 ? cover.objects.slice(0, contentStart) : cover.objects.slice(0, 1);
+  const shell = template.collection || contentStart < 1 ? cover.objects.slice(0, 1) : cover.objects.slice(0, contentStart);
   const theme = event.theme_config ?? {};
   const couple = [event.groom_name, event.bride_name].filter(Boolean).join(" & ") || "Nama & Pasangan";
   const quote = String(theme.quote || "Tuliskan kalimat pembuka undangan Anda.");
@@ -243,12 +252,12 @@ async function handle(request: Request, context: Ctx) {
   const result = await stateFor(eventId);
   if (!("state" in result)) return result.response;
   const { data: event, theme, state } = result;
-  if (p === "templates" && method === "GET") return json(templateStyles.filter((template) => event.package_code !== "free" || ["luxury-onyx", "floral-garden", "minimal-linen"].includes(template.id)).map((template, index) => ({ id: template.id, name: template.name, category: template.category, canvas_json: templateJson(template, result.data), pages: templatePages(template, result.data), width: 1080, height: 1920, thumbnail_url: null, sort_order: index + 1 })));
+  if (p === "templates" && method === "GET") return json(templateStyles.filter((template) => event.package_code !== "free" || freeTemplates.has(template.id)).map((template, index) => ({ id: template.id, name: template.name, category: template.category, canvas_json: templateJson(template, result.data), pages: templatePages(template, result.data), width: 1080, height: 1920, thumbnail_url: null, sort_order: index + 1 })));
   if (p.startsWith("templates/") && method === "GET") {
     const id = p.slice("templates/".length);
     const template = templateStyles.find((item) => item.id === id);
     if (!template) return json({ error: "Not found" }, 404);
-    if (event.package_code === "free" && !["luxury-onyx", "floral-garden", "minimal-linen"].includes(template.id)) return json({ error: "Template ini tersedia pada Paket Bahagia dan Resepsi." }, 403);
+    if (event.package_code === "free" && !freeTemplates.has(template.id)) return json({ error: "Template ini tersedia pada Paket Bahagia dan Resepsi." }, 403);
     return json({ id: template.id, name: template.name, category: template.category, canvas_json: templateJson(template, result.data), pages: templatePages(template, result.data), width: 1080, height: 1920, thumbnail_url: null, sort_order: templateStyles.indexOf(template) + 1 });
   }
   const getDesign = () => ({ ...state.design, pages: [...state.design.pages].sort((a, b) => a.sort_order - b.sort_order), brand_kits: state.brand_kits, fonts: state.fonts });
@@ -256,7 +265,7 @@ async function handle(request: Request, context: Ctx) {
   if (p === "designs" && method === "GET") return json(state.design.canvas_json === "{}" && state.design.pages[0]?.canvas_json === "{}" ? [] : [((({ pages: _pages, ...d }) => d)(state.design))]);
   if (p === "designs" && method === "POST") {
     const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-    if (event.package_code === "free" && typeof body.template_id === "string" && !["luxury-onyx", "floral-garden", "minimal-linen"].includes(body.template_id)) return json({ error: "Template ini tersedia pada Paket Bahagia dan Resepsi." }, 403);
+    if (event.package_code === "free" && typeof body.template_id === "string" && !freeTemplates.has(body.template_id)) return json({ error: "Template ini tersedia pada Paket Bahagia dan Resepsi." }, 403);
     const now = stamp();
     const inputPages = Array.isArray(body.pages) ? body.pages.slice(0, 20) as Record<string, unknown>[] : [];
     const pages: Page[] = inputPages.length
@@ -279,7 +288,7 @@ async function handle(request: Request, context: Ctx) {
     if (id !== `event-${eventId}`) return json({ error: "Not found" }, 404);
     if (action === "template" && method === "PUT") {
       const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-      if (event.package_code === "free" && typeof body.template_id === "string" && !["luxury-onyx", "floral-garden", "minimal-linen"].includes(body.template_id)) return json({ error: "Template ini tersedia pada Paket Bahagia dan Resepsi." }, 403);
+      if (event.package_code === "free" && typeof body.template_id === "string" && !freeTemplates.has(body.template_id)) return json({ error: "Template ini tersedia pada Paket Bahagia dan Resepsi." }, 403);
       const requestedPages = Array.isArray(body.pages) ? body.pages.slice(0, 20) as Record<string, unknown>[] : [];
       const now = stamp();
       const pages: Page[] = (requestedPages.length ? requestedPages : [{ title: "Sampul", canvas_json: String(body.canvas_json ?? "{}") }]).map((input, index) => ({

@@ -1,0 +1,96 @@
+.kalakai-cover-cover {
+  container-type: inline-size;
+  padding: clamp(1.25rem, 5%, 4rem);
+  background: var(--cover-paper);
+  color: var(--cover-ink);
+  text-align: center;
+}
+
+.kalakai-cover-sheet {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: clamp(.65rem, 3cqw, 1.8rem);
+  max-width: 44rem;
+  min-height: 28rem;
+  margin: auto;
+  padding: clamp(1rem, 7cqw, 4.5rem);
+  background-color: var(--cover-panel);
+}
+
+.kalakai-cover-eyebrow, .kalakai-cover-date {
+  font: 600 clamp(.65rem, 2.2cqw, .9rem)/1.4 system-ui, sans-serif;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+  color: var(--cover-accent);
+}
+
+.kalakai-cover-heading {
+  max-width: 100%;
+  margin: 0;
+  font: 400 clamp(2rem, 9cqw, 5.5rem)/1.02 Georgia, serif;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.kalakai-cover-description { max-width: 34rem; margin: 0; color: var(--cover-muted); font-size: .9rem; }
+.kalakai-cover-ornament { color: var(--cover-accent); font-size: clamp(1.2rem, 5cqw, 2.5rem); }
+
+.kalakai-cover-pavilion .kalakai-cover-sheet {
+  border: 3px double var(--cover-accent);
+  border-radius: 50% 50% 46% 46% / 31% 31% 22% 22%;
+}
+
+.kalakai-cover-botanical .kalakai-cover-sheet {
+  border: 1px solid var(--cover-accent);
+  background-image:
+    radial-gradient(ellipse at 4% 12%, #ca89916e 0 6%, transparent 6.5%),
+    radial-gradient(ellipse at 13% 4%, #ca899166 0 6%, transparent 6.5%),
+    radial-gradient(ellipse at 4% 24%, #60704840 0 6%, transparent 6.5%),
+    radial-gradient(ellipse at 95% 85%, #ca89916e 0 6%, transparent 6.5%),
+    radial-gradient(ellipse at 86% 96%, #ca899166 0 6%, transparent 6.5%),
+    radial-gradient(ellipse at 96% 72%, #60704840 0 6%, transparent 6.5%);
+}
+
+.kalakai-cover-photo {
+  width: min(100%, 32rem);
+  aspect-ratio: 2 / 1;
+  border: 1px solid var(--cover-accent);
+  background: color-mix(in srgb, var(--cover-accent) 18%, var(--cover-paper));
+}
+.kalakai-cover-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.kalakai-cover-woven .kalakai-cover-sheet {
+  border-block: 1px solid var(--cover-accent);
+  padding-block: clamp(2.5rem, 10cqw, 5rem);
+  background-image: repeating-conic-gradient(from 45deg, var(--cover-accent) 0 25%, transparent 0 50%),
+    repeating-conic-gradient(from 45deg, var(--cover-accent) 0 25%, transparent 0 50%);
+  background-size: 1rem .7rem;
+  background-repeat: repeat-x;
+  background-position: center top, center bottom;
+}
+
+.kalakai-cover-folio { text-align: left; }
+.kalakai-cover-folio .kalakai-cover-sheet { justify-items: start; border-block: 1px solid var(--cover-accent); }
+.kalakai-cover-folio .kalakai-cover-heading { text-wrap: pretty; }
+.kalakai-cover-folio .kalakai-cover-photo { aspect-ratio: 3 / 2; border-inline-start-width: .25rem; }
+
+.kalakai-cover-letter .kalakai-cover-sheet { border: 1px solid var(--cover-accent); }
+.kalakai-cover-monogram {
+  display: grid;
+  place-items: center;
+  width: clamp(2.25rem, 16cqw, 5rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid var(--cover-accent);
+  color: var(--cover-accent);
+  font: 400 clamp(.8rem, 4cqw, 1.65rem)/1 Georgia, serif;
+}
+
+.kalakai-cover-miniature { padding: .7rem; }
+.kalakai-cover-miniature .kalakai-cover-sheet { min-height: 10.5rem; padding: .85rem; gap: .35rem; }
+.kalakai-cover-miniature .kalakai-cover-heading { font-size: clamp(1rem, 9cqw, 1.85rem); }
+.kalakai-cover-miniature .kalakai-cover-eyebrow, .kalakai-cover-miniature .kalakai-cover-date { font-size: .55rem; }
+.kalakai-cover-miniature .kalakai-cover-photo { width: 70%; height: 1.85rem; }
+.kalakai-cover-miniature.kalakai-cover-woven .kalakai-cover-sheet { padding-block: 1.2rem; }

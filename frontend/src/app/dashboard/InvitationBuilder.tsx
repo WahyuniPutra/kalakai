@@ -480,8 +480,10 @@ export default function InvitationBuilder({ eventId, user }: { eventId?: string;
           <div className="invite-builder-section-title">
             <span>03</span>
             <div>
-              <h2>Editor Desain Undangan (OpenPage Engine)</h2>
-              <p>Susun balok konten Lego 100% responsif HP, ubah urutan, atur warna, font, foto momen, dan musik latar.</p>
+              <h2>Editor Desain Undangan</h2>
+              <p>Pilih template untuk undangan web, lalu atur bagian, warna, foto, dan musiknya.</p>
+              {eventId && <Link href={`/opendesign?eventId=${encodeURIComponent(eventId)}`} target="_blank" rel="noopener"
+                className="secondary-button">Buka Kanvas OpenDesign <ArrowUpRight size={14} /></Link>}
             </div>
           </div>
 

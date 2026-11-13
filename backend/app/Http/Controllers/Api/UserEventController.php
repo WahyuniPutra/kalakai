@@ -51,6 +51,9 @@ class UserEventController extends Controller
             if (!array_key_exists('open_design', $data['theme_config']) && isset($existingTheme['open_design'])) {
                 $data['theme_config']['open_design'] = $existingTheme['open_design'];
             }
+            if (!array_key_exists('openpage_config', $data['theme_config']) && isset($existingTheme['openpage_config'])) {
+                $data['theme_config']['openpage_config'] = $existingTheme['openpage_config'];
+            }
         }
         $event->update($data);
 
@@ -138,6 +141,20 @@ class UserEventController extends Controller
             'theme_config.font_family' => ['nullable', Rule::in(['serif', 'sans'])],
             'theme_config.page_transition' => ['nullable', Rule::in(['fade', 'slide', 'flip', 'zoom'])],
             'theme_config.web_design' => ['nullable', 'array'],
+            'theme_config.openpage_config' => ['nullable', 'array'],
+            'theme_config.openpage_config.version' => ['required_with:theme_config.openpage_config', Rule::in(['2.0.0'])],
+            'theme_config.openpage_config.layoutArchetype' => ['nullable', 'string', 'max:40'],
+            'theme_config.openpage_config.metadata' => ['required_with:theme_config.openpage_config', 'array'],
+            'theme_config.openpage_config.theme' => ['required_with:theme_config.openpage_config', 'array'],
+            'theme_config.openpage_config.audio' => ['required_with:theme_config.openpage_config', 'array'],
+            'theme_config.openpage_config.blocks' => ['present_with:theme_config.openpage_config', 'array', 'list', 'max:100'],
+            'theme_config.openpage_config.blocks.*' => ['array'],
+            'theme_config.openpage_config.blocks.*.id' => ['required', 'string', 'max:100'],
+            'theme_config.openpage_config.blocks.*.type' => ['required', 'string', 'max:30'],
+            'theme_config.openpage_config.blocks.*.variant' => ['required', 'string', 'max:50'],
+            'theme_config.openpage_config.blocks.*.visible' => ['required', 'boolean'],
+            'theme_config.openpage_config.blocks.*.styles' => ['sometimes', 'array'],
+            'theme_config.openpage_config.blocks.*.content' => ['present', 'array'],
             'theme_config.quote' => ['nullable', 'string', 'max:1000'],
             'theme_config.quote_source' => ['nullable', 'string', 'max:150'],
             'theme_config.audio_title' => ['nullable', 'string', 'max:255'],
@@ -183,6 +200,9 @@ class UserEventController extends Controller
         }
         if (isset($data['theme_config']['web_design']) && strlen(json_encode($data['theme_config']['web_design']) ?: '') > 1024 * 1024) {
             throw ValidationException::withMessages(['theme_config.web_design' => 'Desain halaman web terlalu besar.']);
+        }
+        if (isset($data['theme_config']['openpage_config']) && strlen(json_encode($data['theme_config']['openpage_config']) ?: '') > 1024 * 1024) {
+            throw ValidationException::withMessages(['theme_config.openpage_config' => 'Desain OpenPage terlalu besar.']);
         }
 
         if (isset($data['theme_config'])) {

@@ -8,6 +8,12 @@ import {
   Gift, Map, Compass, Radio
 } from "lucide-react";
 import type { OpenPageConfig, OpenPageBlock } from "./schema";
+import { INVITATION_COLLECTION } from "../invitation-collection";
+import { readableColor } from "../template-colors";
+import { CollectionCover } from "./collection-cover";
+import { OPENPAGE_DECORATIVE_ELEMENTS } from "./elements";
+
+const safeOrnaments = new Set(OPENPAGE_DECORATIVE_ELEMENTS.map((element) => element.svg));
 
 interface OpenPageRendererProps {
   config: OpenPageConfig;
@@ -40,6 +46,7 @@ export default function OpenPageRenderer({
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const theme = config.theme;
+  const buttonText = readableColor("#ffffff", [theme.primaryColor]);
   const audio = config.audio;
   const layoutArchetype = config.layoutArchetype || "classic-vertical";
 
@@ -164,7 +171,7 @@ export default function OpenPageRenderer({
           className={`fixed ${audioPositionClass} z-40 h-12 w-12 rounded-full flex items-center justify-center shadow-2xl transition cursor-pointer border`}
           style={{
             backgroundColor: theme.primaryColor,
-            color: "#ffffff",
+            color: buttonText,
             borderColor: `${theme.accentColor}60`,
           }}
           title={isPlaying ? "Jeda Musik" : "Putar Musik"}
@@ -286,10 +293,10 @@ export default function OpenPageRenderer({
               className="w-full py-3.5 px-6 rounded-full font-semibold shadow-lg transition flex items-center justify-center gap-2 cursor-pointer hover:opacity-95"
               style={{
                 backgroundColor: theme.primaryColor,
-                color: "#ffffff",
+                color: buttonText,
               }}
             >
-              <Heart className="h-4 w-4 fill-white" />
+              <Heart className="h-4 w-4 fill-current" />
               Buka Undangan
             </button>
           </div>
@@ -300,11 +307,24 @@ export default function OpenPageRenderer({
       <div className={`transition-opacity duration-1000 ${isOpen ? "opacity-100" : "opacity-0"} ${layoutArchetype === "slide-presentation" ? "pb-24" : ""}`}>
         {config.blocks.map((block) => {
           if (!block.visible) return null;
+          const ornament = safeOrnaments.has(block.content.ornamentSvg) ? block.content.ornamentSvg : undefined;
 
           switch (block.type) {
             // ==================== HERO BLOCK ====================
             case "hero": {
               const coverImg = block.content.coverImage || event.theme_config?.hero_image_url;
+              const collection = INVITATION_COLLECTION.find((design) => block.variant === `collection-${design.layout}`);
+              if (collection) {
+                return (
+                  <section id="hero" key={block.id}>
+                    <CollectionCover layout={collection.layout} theme={theme}
+                      title={block.content.title || event.title} eyebrow={block.content.eyebrow}
+                      date={block.content.dateText} description={block.content.subtitle} photo={coverImg}
+                      ornament={ornament && <span className="w-12" aria-hidden="true"
+                        style={{ color: theme.accentColor }} dangerouslySetInnerHTML={{ __html: ornament }} />} />
+                  </section>
+                );
+              }
 
               // 1. Arch Palace Variant (Kahayan Royal)
               if (block.variant === "arch-palace") {
@@ -314,11 +334,11 @@ export default function OpenPageRenderer({
                     key={block.id}
                     className="relative py-20 px-6 text-center flex flex-col items-center justify-center overflow-hidden"
                   >
-                    {block.content.ornamentSvg && (
+                    {ornament && (
                       <div
                         className="w-14 h-14 mx-auto mb-3 opacity-90 transition-transform duration-500 hover:scale-110"
                         style={{ color: theme.primaryColor }}
-                        dangerouslySetInnerHTML={{ __html: block.content.ornamentSvg }}
+                        dangerouslySetInnerHTML={{ __html: ornament }}
                       />
                     )}
                     <span
@@ -566,11 +586,11 @@ export default function OpenPageRenderer({
                     className="relative py-20 px-6 text-center overflow-hidden"
                   >
                     <div className="max-w-3xl mx-auto space-y-4">
-                      {block.content.ornamentSvg && (
+                      {ornament && (
                         <div
                           className="w-16 h-16 mx-auto mb-2 opacity-90 transition-transform duration-500 hover:scale-110"
                           style={{ color: theme.primaryColor }}
-                          dangerouslySetInnerHTML={{ __html: block.content.ornamentSvg }}
+                          dangerouslySetInnerHTML={{ __html: ornament }}
                         />
                       )}
                       <span
@@ -628,11 +648,11 @@ export default function OpenPageRenderer({
                     </div>
                   )}
                   <div className="relative z-10 max-w-3xl mx-auto space-y-4">
-                    {block.content.ornamentSvg && (
+                    {ornament && (
                       <div
                         className="w-16 h-16 mx-auto mb-2 opacity-90 transition-transform duration-500 hover:scale-110"
                         style={{ color: theme.primaryColor }}
-                        dangerouslySetInnerHTML={{ __html: block.content.ornamentSvg }}
+                        dangerouslySetInnerHTML={{ __html: ornament }}
                       />
                     )}
                     <span
@@ -784,11 +804,11 @@ export default function OpenPageRenderer({
                       borderColor: theme.borderColor,
                     }}
                   >
-                    {block.content.ornamentSvg ? (
+                    {ornament ? (
                       <div
                         className="w-12 h-12 mx-auto mb-2 opacity-90"
                         style={{ color: theme.primaryColor }}
-                        dangerouslySetInnerHTML={{ __html: block.content.ornamentSvg }}
+                        dangerouslySetInnerHTML={{ __html: ornament }}
                       />
                     ) : (
                       <Heart className="h-6 w-6 mx-auto" style={{ color: theme.primaryColor }} />
@@ -1039,7 +1059,7 @@ export default function OpenPageRenderer({
                         <span className="text-xs font-bold font-mono" style={{ color: theme.primaryColor }}>
                           {item.year}
                         </span>
-                        <h4 className="text-lg font-bold text-white">{item.title}</h4>
+                        <h4 className="text-lg font-bold">{item.title}</h4>
                         <p className="text-xs leading-relaxed" style={{ color: theme.textMutedColor }}>
                           {item.desc}
                         </p>
@@ -1076,7 +1096,7 @@ export default function OpenPageRenderer({
                         <span className="text-xs uppercase font-mono font-bold" style={{ color: theme.accentColor }}>
                           AKAD NIKAH
                         </span>
-                        <div className="text-2xl font-bold text-white">{block.content.akadTime}</div>
+                        <div className="text-2xl font-bold">{block.content.akadTime}</div>
                         <p className="text-xs" style={{ color: theme.textMutedColor }}>Prosesi Sakral Keluarga Inti</p>
                       </div>
 
@@ -1088,7 +1108,7 @@ export default function OpenPageRenderer({
                         <span className="text-xs uppercase font-mono font-bold" style={{ color: theme.accentColor }}>
                           RESEPSI PERNIKAHAN
                         </span>
-                        <div className="text-2xl font-bold text-white">{block.content.resepsiTime}</div>
+                        <div className="text-2xl font-bold">{block.content.resepsiTime}</div>
                         <p className="text-xs" style={{ color: theme.textMutedColor }}>Jamuan Seluruh Tamu Undangan</p>
                       </div>
                     </div>
@@ -1099,7 +1119,7 @@ export default function OpenPageRenderer({
                       style={{ backgroundColor: theme.cardBgColor, borderColor: theme.borderColor }}
                     >
                       <MapPin className="h-6 w-6 mx-auto" style={{ color: theme.primaryColor }} />
-                      <h3 className="text-xl font-bold text-white">{block.content.locationName}</h3>
+                      <h3 className="text-xl font-bold">{block.content.locationName}</h3>
                       <p className="text-xs max-w-md mx-auto" style={{ color: theme.textMutedColor }}>
                         {block.content.locationAddress}
                       </p>
@@ -1111,7 +1131,7 @@ export default function OpenPageRenderer({
                           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold shadow-md transition hover:opacity-90"
                           style={{
                             backgroundColor: theme.primaryColor,
-                            color: "#ffffff",
+                            color: buttonText,
                           }}
                         >
                           <Navigation className="h-4 w-4" /> Buka Google Maps
@@ -1143,7 +1163,7 @@ export default function OpenPageRenderer({
                         <span className="text-xs font-mono font-bold" style={{ color: theme.primaryColor }}>
                           {block.content.akadTime}
                         </span>
-                        <h4 className="text-lg font-bold text-white">Akad Nikah</h4>
+                        <h4 className="text-lg font-bold">Akad Nikah</h4>
                         <p className="text-xs" style={{ color: theme.textMutedColor }}>Pemberkatan &amp; Ijab Qobul</p>
                       </div>
 
@@ -1151,7 +1171,7 @@ export default function OpenPageRenderer({
                         <span className="text-xs font-mono font-bold" style={{ color: theme.primaryColor }}>
                           {block.content.resepsiTime}
                         </span>
-                        <h4 className="text-lg font-bold text-white">Resepsi &amp; Jamuan Kasih</h4>
+                        <h4 className="text-lg font-bold">Resepsi &amp; Jamuan Kasih</h4>
                         <p className="text-xs" style={{ color: theme.textMutedColor }}>Ramah tamah bersama seluruh sahabat &amp; handai tolan</p>
                       </div>
                     </div>
@@ -1163,7 +1183,7 @@ export default function OpenPageRenderer({
                       <div className="flex items-start gap-3">
                         <MapPin className="h-5 w-5 shrink-0 mt-0.5" style={{ color: theme.primaryColor }} />
                         <div>
-                          <h4 className="text-base font-bold text-white">{block.content.locationName}</h4>
+                          <h4 className="text-base font-bold">{block.content.locationName}</h4>
                           <p className="text-xs mt-0.5" style={{ color: theme.textMutedColor }}>{block.content.locationAddress}</p>
                         </div>
                       </div>
@@ -1206,7 +1226,7 @@ export default function OpenPageRenderer({
                       style={{ backgroundColor: theme.cardBgColor, borderColor: theme.borderColor }}
                     >
                       <span className="text-xs uppercase font-mono text-stone-400">Akad Nikah</span>
-                      <div className="text-xl font-bold text-white">{block.content.akadTime}</div>
+                      <div className="text-xl font-bold">{block.content.akadTime}</div>
                       <p className="text-xs" style={{ color: theme.textMutedColor }}>Khusus Keluarga &amp; Kerabat Dekat</p>
                     </div>
 
@@ -1215,7 +1235,7 @@ export default function OpenPageRenderer({
                       style={{ backgroundColor: theme.cardBgColor, borderColor: theme.borderColor }}
                     >
                       <span className="text-xs uppercase font-mono text-stone-400">Resepsi Pernikahan</span>
-                      <div className="text-xl font-bold text-white">{block.content.resepsiTime}</div>
+                      <div className="text-xl font-bold">{block.content.resepsiTime}</div>
                       <p className="text-xs" style={{ color: theme.textMutedColor }}>Bagi Seluruh Tamu Undangan</p>
                     </div>
                   </div>
@@ -1225,7 +1245,7 @@ export default function OpenPageRenderer({
                     style={{ backgroundColor: theme.cardBgColor, borderColor: theme.borderColor }}
                   >
                     <MapPin className="h-6 w-6 mx-auto" style={{ color: theme.primaryColor }} />
-                    <h3 className="text-xl font-bold text-white">{block.content.locationName}</h3>
+                    <h3 className="text-xl font-bold">{block.content.locationName}</h3>
                     <p className="text-xs max-w-md mx-auto" style={{ color: theme.textMutedColor }}>
                       {block.content.locationAddress}
                     </p>
@@ -1237,7 +1257,7 @@ export default function OpenPageRenderer({
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold shadow-md transition"
                         style={{
                           backgroundColor: theme.primaryColor,
-                          color: "#ffffff",
+                          color: buttonText,
                         }}
                       >
                         <Navigation className="h-4 w-4" /> Buka Google Maps
@@ -1268,7 +1288,7 @@ export default function OpenPageRenderer({
                       {block.content.heading || "TIKET MASUK PERSONAL"}
                     </div>
 
-                    <h3 className="text-2xl font-bold text-white">{guest.name}</h3>
+                    <h3 className="text-2xl font-bold">{guest.name}</h3>
                     <p className="text-xs" style={{ color: theme.textMutedColor }}>
                       {block.content.instruction}
                     </p>
@@ -1487,7 +1507,7 @@ export default function OpenPageRenderer({
                         value={guestName}
                         onChange={(e) => setGuestName(e.target.value)}
                         required
-                        className="w-full px-4 py-2.5 rounded-xl border text-sm text-white bg-black/30 border-stone-800 focus:outline-none focus:border-rose-500"
+                        className="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-rose-500" style={{ backgroundColor: theme.bgColor, borderColor: theme.borderColor, color: theme.textColor }}
                         placeholder="Nama lengkap..."
                       />
                     </div>
@@ -1531,7 +1551,7 @@ export default function OpenPageRenderer({
                         onChange={(e) => setMessage(e.target.value)}
                         required
                         rows={3}
-                        className="w-full px-4 py-2.5 rounded-xl border text-sm text-white bg-black/30 border-stone-800 focus:outline-none focus:border-rose-500"
+                        className="w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:border-rose-500" style={{ backgroundColor: theme.bgColor, borderColor: theme.borderColor, color: theme.textColor }}
                         placeholder="Tuliskan ucapan dan doa terbaik untuk kedua mempelai..."
                       />
                     </div>
@@ -1542,7 +1562,7 @@ export default function OpenPageRenderer({
                       className="w-full py-3 rounded-xl font-semibold shadow-lg transition flex items-center justify-center gap-2 cursor-pointer hover:opacity-90"
                       style={{
                         backgroundColor: theme.primaryColor,
-                        color: "#ffffff",
+                        color: buttonText,
                       }}
                     >
                       <Send className="h-4 w-4" />
@@ -1608,7 +1628,7 @@ export default function OpenPageRenderer({
 
                   <div className="flex items-center justify-center gap-1.5 text-xs text-stone-500 font-mono">
                     <span>Powered by</span>
-                    <strong className="text-white">KALAKAI</strong>
+                    <strong>KALAKAI</strong>
                     <span>— Platform Digitalisasi Event</span>
                   </div>
                 </footer>

@@ -14,6 +14,7 @@ import { OPENPAGE_THEME_PRESETS } from "./presets";
 import { OPENPAGE_CATALOG_TEMPLATES, type OpenPageTemplate } from "./templates";
 import { OPENPAGE_DECORATIVE_ELEMENTS, type DecorativeElement } from "./elements";
 import OpenPageRenderer from "./renderer";
+import { CollectionCover } from "./collection-cover";
 
 interface OpenPageEditorProps {
   config: OpenPageConfig;
@@ -684,6 +685,8 @@ export default function OpenPageEditor({
                   { id: "syari", label: "Islami Syar'i" },
                   { id: "rustic", label: "Rustic Boho" },
                   { id: "minimalist", label: "Minimalis" },
+                  { id: "no-photo", label: "Tanpa Foto" },
+                  { id: "slider", label: "Slide" },
                 ].map((cat) => (
                   <button
                     key={cat.id}
@@ -708,7 +711,10 @@ export default function OpenPageEditor({
                     className="rounded-2xl border border-stone-800 bg-stone-950 overflow-hidden shadow-lg hover:border-stone-700 transition space-y-2.5 p-3"
                   >
                     {/* Visual Banner */}
-                    <div
+                    {tpl.collectionLayout ? (
+                      <CollectionCover layout={tpl.collectionLayout} theme={tpl.theme} miniature
+                        title="Rania & Arga" date="20 Desember 2026" />
+                    ) : <div
                       className="h-28 rounded-xl relative overflow-hidden flex items-end p-3 border border-white/10"
                       style={{ background: tpl.thumbnailGradient }}
                     >
@@ -721,7 +727,8 @@ export default function OpenPageEditor({
                         <span className="text-[10px] font-mono text-stone-300 uppercase tracking-wider">{tpl.categoryLabel}</span>
                         <h4 className="text-sm font-bold text-white drop-shadow">{tpl.name}</h4>
                       </div>
-                    </div>
+                    </div>}
+                    {tpl.collectionLayout && <h4 className="text-sm font-semibold text-white">{tpl.name}</h4>}
 
                     <p className="text-[11px] text-stone-400 leading-relaxed">
                       {tpl.description}
